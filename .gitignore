@@ -1,0 +1,13 @@
+.DS_Store
+.idea/
+.gradle/
+.kotlin/
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+local.properties
+Local.xcconfig
+.env
+.env.*
+!.env.example

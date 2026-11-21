@@ -1,0 +1,141 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+		100000000000000000000001 = {
+			isa = PBXBuildFile;
+			fileRef = 100000000000000000000002;
+		};
+		100000000000000000000002 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = FamilyCareApp.swift;
+			sourceTree = "<group>";
+		};
+		100000000000000000000003 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.application;
+			includeInIndex = 0;
+			path = FamilyCare.app;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		100000000000000000000004 = {
+			isa = PBXGroup;
+			children = (100000000000000000000005, 100000000000000000000006);
+			sourceTree = "<group>";
+		};
+		100000000000000000000005 = {
+			isa = PBXGroup;
+			children = (100000000000000000000002);
+			path = FamilyCare;
+			sourceTree = "<group>";
+		};
+		100000000000000000000006 = {
+			isa = PBXGroup;
+			children = (100000000000000000000003);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		100000000000000000000007 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (100000000000000000000001);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		100000000000000000000008 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		100000000000000000000009 = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			name = "Build shared framework";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nif [ -z \"${JAVA_HOME:-}\" ]; then\n  JAVA_HOME=$(/usr/libexec/java_home -v 17)\nfi\nexport JAVA_HOME\ncd \"$SRCROOT/..\"\n./gradlew :composeApp:embedAndSignAppleFrameworkForXcode --max-workers=1\n";
+		};
+		10000000000000000000000A = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000000000000000000000D;
+			buildPhases = (100000000000000000000009, 100000000000000000000007, 100000000000000000000008);
+			buildRules = ();
+			dependencies = ();
+			name = FamilyCare;
+			productName = FamilyCare;
+			productReference = 100000000000000000000003;
+			productType = "com.apple.product-type.application";
+		};
+		10000000000000000000000B = {
+			isa = PBXProject;
+			attributes = { LastUpgradeCheck = 2610; };
+			buildConfigurationList = 10000000000000000000000C;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base);
+			mainGroup = 100000000000000000000004;
+			productRefGroup = 100000000000000000000006;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (10000000000000000000000A);
+		};
+		10000000000000000000000C = {
+			isa = XCConfigurationList;
+			buildConfigurations = (10000000000000000000000E, 10000000000000000000000F);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000000000000000000000D = {
+			isa = XCConfigurationList;
+			buildConfigurations = (100000000000000000000010, 100000000000000000000011);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000000000000000000000E = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		10000000000000000000000F = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphonesimulator iphoneos";
+			};
+			name = Release;
+		};
+		100000000000000000000010 = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 100000000000000000000012;
+			buildSettings = {};
+			name = Debug;
+		};
+		100000000000000000000011 = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 100000000000000000000012;
+			buildSettings = {};
+			name = Release;
+		};
+		100000000000000000000012 = {
+			isa = PBXFileReference;
+			lastKnownFileType = text.xcconfig;
+			path = FamilyCare.xcconfig;
+			sourceTree = SOURCE_ROOT;
+		};
+	};
+	rootObject = 10000000000000000000000B;
+}
