@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Family Care is a mobile planner for family appointments, records, and follow-ups that stays on your device."
+    />
+    <title>Family Care</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="topbar">
+      <a class="topbar__brand" href="#top" aria-label="Family Care home">Family Care</a>
+      <nav class="topbar__nav" aria-label="Primary">
+        <a href="#product">Product</a>
+        <a href="#screens">Demo</a>
+        <a href="#local">On device</a>
+        <a
+          class="topbar__github"
+          href="https://github.com/runwithfun/family-care"
+          rel="noopener noreferrer"
+          >GitHub</a
+        >
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-brand">
+        <div class="hero__media" aria-hidden="true">
+          <img
+            class="hero__image"
+            src="/src/assets/hero-scene.svg"
+            alt=""
+            width="1440"
+            height="900"
+          />
+        </div>
+        <div class="hero__copy">
+          <p class="hero__brand" id="hero-brand">Family Care</p>
+          <h1 class="hero__headline">Keep the next visit, note, and follow-up in one calm day plan.</h1>
+          <p class="hero__lede">
+            A local mobile planner for family appointments, records, and Assistant actions—no backend required.
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="#screens">See the demo screens</a>
+            <a
+              class="button button--ghost"
+              href="https://github.com/runwithfun/family-care"
+              rel="noopener noreferrer"
+              >View the project</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--product" id="product" aria-labelledby="product-title">
+        <div class="section__inner">
+          <p class="eyebrow">What it is</p>
+          <h2 id="product-title">A day plan for the people you care for</h2>
+          <p class="section__lede">
+            Family Care opens a fictional child profile and a shared family day. Visits keep their booking state;
+            tasks keep their own completion state. Both can point back to the document that started them.
+          </p>
+          <ul class="feature-list">
+            <li>
+              <strong>Shared plan</strong>
+              <span>One in-memory care plan drives the agenda, profile, and calendar views.</span>
+            </li>
+            <li>
+              <strong>Clear ownership</strong>
+              <span>Each event belongs to a family member, so “for you” and child visits stay distinct.</span>
+            </li>
+            <li>
+              <strong>Document lineage</strong>
+              <span>Immunizations, visit summaries, and follow-ups remain linked to their source notes.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section--screens" id="screens" aria-labelledby="screens-title">
+        <div class="section__inner">
+          <p class="eyebrow">Illustrative demo</p>
+          <h2 id="screens-title">Screens from the starter day</h2>
+          <p class="section__lede">
+            The demo uses synthetic identities and clinic notes. These frames show the day plan, on-device
+            documents, and a local Assistant proposal from the same sample family.
+          </p>
+          <div class="screens">
+            <figure class="screen reveal">
+              <img src="/src/assets/screen-day.svg" alt="Day plan listing Maya’s well-baby visit and related tasks" width="320" height="640" />
+              <figcaption>Day plan</figcaption>
+            </figure>
+            <figure class="screen reveal" style="--delay: 80ms">
+              <img src="/src/assets/screen-docs.svg" alt="Documents screen with visit summary and immunization record" width="320" height="640" />
+              <figcaption>Records</figcaption>
+            </figure>
+            <figure class="screen reveal" style="--delay: 160ms">
+              <img src="/src/assets/screen-assistant.svg" alt="Assistant proposal to ask about recovery at today’s visit" width="320" height="640" />
+              <figcaption>Assistant</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--local" id="local" aria-labelledby="local-title">
+        <div class="section__inner section__inner--split">
+          <div>
+            <p class="eyebrow">Designed to stay local</p>
+            <h2 id="local-title">Family data stays on the device</h2>
+            <p class="section__lede">
+              Records, reminders, and Assistant confirmations run without a remote model, analytics service, or
+              backend deployment. GitHub Pages hosts only this static project site.
+            </p>
+          </div>
+          <ul class="local-points">
+            <li>Local reminders and on-device document tools</li>
+            <li>Confirmed proposals write through the same calendar operations</li>
+            <li>Public immunization references stay as links, not uploaded charts</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section--cta" aria-labelledby="cta-title">
+        <div class="section__inner">
+          <h2 id="cta-title">Run the demo on a simulator</h2>
+          <p class="section__lede">
+            The shared UI uses Kotlin and Compose Multiplatform. Clone the repository, use JDK 17, and follow the
+            iOS or Android steps in the README.
+          </p>
+          <a
+            class="button button--primary"
+            href="https://github.com/runwithfun/family-care#run-the-demo"
+            rel="noopener noreferrer"
+            >Open the run guide</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p><strong>Family Care</strong> · local family planning demo</p>
+      <p>
+        <a href="https://github.com/runwithfun/family-care" rel="noopener noreferrer">Source on GitHub</a>
+      </p>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 # Family Care
 
-Family Care is a mobile planner for family appointments, records, and follow-ups. The starter app opens a fictional child profile and day plan locally. The app is designed to run on the device with local records, reminders, and Assistant actions. It requires no backend deployment or analytics service.
+Family Care is a mobile planner for family appointments, records, and follow-ups. The starter app opens a fictional child profile and day plan locally. The app is designed to run on the device with local records, reminders, and Assistant actions. It requires no backend deployment or analytics service. The project site is published at [https://runwithfun.github.io/family-care/](https://runwithfun.github.io/family-care/).
 
 ## Run the demo
 
