@@ -27,3 +27,11 @@ cd app
 ```
 
 See [AGENTS.md](AGENTS.md) for coordination and verification rules. The Gradle wrapper is distributed under the [Apache License 2.0](app/gradle/wrapper/LICENSE).
+
+## Shared demo model
+
+`DemoFamily.createPlan()` creates a fresh in-memory plan with a fictional mother, child, and fixed demo day. Create it once at the app entry point and share the same plan instance with screens. `eventsOn(date, personId)` provides the agenda, and its optional person filter supports the profile and calendar views.
+
+- A visit has its own booking state, and a task has an independent completion state. Both can link back to an original document for the same person.
+- Documents keep original content, extracted proposals and reviewed values. Recorded immunizations, public references and appointments are separate.
+- A confirmed assistant proposal writes through the same event operation as the calendar. Repeating the same event ID and details returns the existing result. A different event under that ID is rejected.
