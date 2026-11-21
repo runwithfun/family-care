@@ -26,6 +26,8 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(libs.compose.icons)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activityCompose)
@@ -34,6 +36,10 @@ kotlin {
             implementation(kotlin("test"))
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "com.runwithfun.familycare.resources"
 }
 
 android {
