@@ -79,6 +79,16 @@ final class CalendarVisitClarityTests: XCTestCase {
         movedDay.tap()
         assertVisible("Well-baby visit", in: app, startsWith: true)
         capture("40-calendar-after-restart", in: app)
+
+        // Put the visit back on the demo day so later suite tests still find it on today.
+        tap("Well-baby visit", in: app, startsWith: true)
+        tap("Use today", in: app)
+        let save = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@ OR label == %@", "Save new date & time", "Save schedule"))
+            .firstMatch
+        XCTAssertTrue(save.waitForExistence(timeout: 5), "Expected a schedule save action.")
+        save.tap()
+        tap("Back", in: app)
     }
 
     @MainActor
