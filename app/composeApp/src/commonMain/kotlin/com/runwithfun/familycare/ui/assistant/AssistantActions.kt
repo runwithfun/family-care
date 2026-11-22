@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.OriginalContent
+import com.runwithfun.familycare.domain.Task
 
 private const val RecoveryExcerpt = "Bring any questions about your recovery."
 
@@ -33,7 +34,8 @@ class AssistantActions internal constructor(
 ) {
     private val proposal = DemoFamily.recoveryQuestion
 
-    val task = proposal.task
+    val task: Task
+        get() = plan.event(proposal.task.id) as? Task ?: proposal.task
     val personName = plan.people.firstOrNull { it.id == task.personId }?.displayName
     private val source = plan.documents.firstOrNull {
         it.id == task.sourceDocumentId && it.personId == task.personId
