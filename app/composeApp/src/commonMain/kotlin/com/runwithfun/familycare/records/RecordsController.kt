@@ -65,6 +65,7 @@ class RecordsController(
     }
 
     fun isPdfImported(documentId: String = DemoFamily.immunizationDocumentId): Boolean {
+        revision
         val key = plan.document(documentId)?.storageKey() ?: return false
         return files.hasBytes(key)
     }

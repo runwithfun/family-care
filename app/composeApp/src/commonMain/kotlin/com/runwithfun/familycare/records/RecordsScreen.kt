@@ -297,18 +297,19 @@ private fun OriginalPanel(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Original", style = MaterialTheme.typography.titleMedium)
-        Button(onClick = { records.reopenOriginal(document.id) }) {
-            Text("Open stored original")
+        if (document.id == DemoFamily.immunizationDocumentId && !records.isPdfImported(document.id)) {
+            Button(onClick = { records.importSyntheticImmunizationPdf() }) {
+                Text("Import synthetic clinic PDF")
+            }
+        } else {
+            Button(onClick = { records.reopenOriginal(document.id) }) {
+                Text("Open stored original")
+            }
         }
         val opened = records.openedOriginal?.takeIf { it.documentId == document.id }
         if (opened != null) {
             opened.pdfBytes?.let { RecordPdfPreview(it, Modifier.fillMaxWidth()) }
             opened.textPreview?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-        } else {
-            Text(
-                "Use Open stored original to retrieve the on-device file.",
-                style = MaterialTheme.typography.bodySmall,
-            )
         }
     }
 }
