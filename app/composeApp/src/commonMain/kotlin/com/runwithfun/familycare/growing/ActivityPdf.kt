@@ -11,11 +11,7 @@ object ActivityPdf {
     fun fileName(activity: ReviewedActivity): String =
         "family-care-${activity.id}.pdf"
 
-    fun render(
-        activity: ReviewedActivity,
-        paper: ActivityPaper = ActivityPaper.LETTER,
-        source: String? = null,
-    ): ByteArray {
+    fun render(activity: ReviewedActivity, paper: ActivityPaper = ActivityPaper.LETTER): ByteArray {
         val lines = buildList {
             add("Family Care")
             add(activity.title)
@@ -27,10 +23,8 @@ object ActivityPdf {
             activity.steps.forEachIndexed { index, step ->
                 add("${index + 1}. $step")
             }
-            if (source != null) {
-                add("")
-                add("Source: $source")
-            }
+            add("")
+            add("Source: ${activity.sourceLabel}")
         }
         return buildTextPdf(lines, paper)
     }

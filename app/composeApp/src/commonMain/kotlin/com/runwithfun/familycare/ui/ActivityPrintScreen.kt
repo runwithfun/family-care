@@ -23,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -41,6 +42,7 @@ fun ActivityPrintScreen(
     onBack: () -> Unit,
 ) {
     val activity = remember(stage) { DemoFamily.reviewedActivity(stage) }
+    val uriHandler = LocalUriHandler.current
     var paperName by rememberSaveable { mutableStateOf(ActivityPaper.LETTER.name) }
     val paper = ActivityPaper.valueOf(paperName)
     var exporting by rememberSaveable { mutableStateOf(false) }
@@ -123,6 +125,12 @@ fun ActivityPrintScreen(
         Text("Steps", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         activity.steps.forEachIndexed { index, step ->
             Text("${index + 1}. $step", style = MaterialTheme.typography.bodyLarge)
+        }
+        TextButton(
+            onClick = { uriHandler.openUri(activity.sourceUrl) },
+            modifier = Modifier.heightIn(min = 48.dp),
+        ) {
+            Text(activity.sourceLabel)
         }
     }
 }

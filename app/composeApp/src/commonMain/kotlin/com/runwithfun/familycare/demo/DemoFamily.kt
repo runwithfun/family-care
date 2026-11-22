@@ -28,7 +28,6 @@ object DemoFamily {
     const val childVisitId = "demo-child-visit"
     val today = CareDate(2026, 11, 23)
 
-    private const val childVisitId = "demo-child-visit"
     private const val recoveryVisitId = "demo-recovery-visit"
     const val recoveryDocumentId = "demo-recovery-note"
     const val immunizationDocumentId = "demo-immunizations"
@@ -77,66 +76,14 @@ object DemoFamily {
         id = "demo-activity-tummy-time",
         stage = AgeStage.NEWBORN_0_2_MONTHS,
         title = "Supervised tummy time",
-        summary = "A short, reviewed practice sheet for the newborn stage. " +
-            "Use a firm surface and stay with Maya the whole time.",
-        steps = listOf(
-            "Place Maya on her tummy for 2–3 minutes while she is awake and calm.",
-            "Get down to eye level and talk or sing so she lifts her head toward your voice.",
-            "Stop when she looks tired, then try again later the same day.",
-            "Write one observation to discuss at the next well-baby visit.",
-        ),
-    )
-
-    fun reviewedActivity(stage: AgeStage): ReviewedActivity = when (stage) {
-        AgeStage.NEWBORN_0_2_MONTHS -> tummyTimeActivity
-        AgeStage.INFANT_2_4_MONTHS -> ReviewedActivity(
-            id = "demo-activity-reach-and-grasp",
-            stage = AgeStage.INFANT_2_4_MONTHS,
-            title = "Reach and grasp play",
-            summary = "A short, reviewed practice sheet for the early-infant stage. " +
-                "Offer one soft toy at a time within easy reach.",
-            steps = listOf(
-                "Sit Maya supported on your lap facing a soft rattle.",
-                "Hold the rattle just within reach and wait for her to move toward it.",
-                "Celebrate any reach or grasp, then rest before another short round.",
-                "Save an observation if you want to bring it up at the next visit.",
-            ),
-        )
-    }
-
-    private const val MilestoneSourceLabel = "CDC Learn the Signs. Act Early."
-    private const val MilestoneSourceUrl =
-        "https://www.cdc.gov/ncbddd/actearly/milestones/index.html"
-
-    val newbornObservation = GrowingObservation(
-        id = "demo-obs-newborn-lift",
-        personId = childId,
-        stage = AgeStage.NEWBORN_0_2_MONTHS,
-        note = "Holds head up briefly during supervised tummy time.",
-        recordedOn = CareDate(2026, 10, 20),
-    )
-
-    val infantObservation = GrowingObservation(
-        id = "demo-obs-infant-reach",
-        personId = childId,
-        stage = AgeStage.INFANT_2_4_MONTHS,
-        note = "Reaches toward a soft rattle held nearby.",
-        recordedOn = CareDate(2026, 11, 18),
-        forVisitId = childVisitId,
-    )
-
-    val tummyTimeActivity = ReviewedActivity(
-        id = "demo-activity-tummy-time",
-        stage = AgeStage.NEWBORN_0_2_MONTHS,
-        title = "Supervised tummy time",
         summary = "Short practice on a firm surface. Stay with your baby the whole time.",
         steps = listOf(
-            "Place your baby on their tummy for 2–3 minutes while awake and calm.",
-            "Get to eye level and talk so they lift their head toward your voice.",
-            "Stop when they look tired; try again later the same day.",
+            "Place your awake baby on their tummy on a firm floor mat and stay close.",
+            "Get down to eye level and talk or sing to your baby.",
+            "Keep the session short and stop when your baby needs a break.",
         ),
-        sourceLabel = MilestoneSourceLabel,
-        sourceUrl = MilestoneSourceUrl,
+        sourceLabel = "American Academy of Pediatrics · Back to Sleep, Tummy to Play",
+        sourceUrl = "https://www.healthychildren.org/English/ages-stages/baby/sleep/Pages/back-to-sleep-tummy-to-play.aspx",
     )
 
     fun reviewedActivity(stage: AgeStage): ReviewedActivity = when (stage) {
@@ -145,14 +92,14 @@ object DemoFamily {
             id = "demo-activity-reach-and-grasp",
             stage = AgeStage.INFANT_2_4_MONTHS,
             title = "Reach and grasp play",
-            summary = "Offer one soft toy at a time within easy reach.",
+            summary = "Offer one baby-safe toy or clean cloth at a time.",
             steps = listOf(
-                "Support your baby on your lap facing a soft rattle.",
-                "Hold it just within reach and wait for a reach or grasp.",
-                "Celebrate the try, then rest before another short round.",
+                "Hold the toy or cloth near one hand and give your baby time to reach.",
+                "Offer the same object near the other hand.",
+                "Pause when your baby is ready for a break.",
             ),
-            sourceLabel = MilestoneSourceLabel,
-            sourceUrl = MilestoneSourceUrl,
+            sourceLabel = "UNICEF Parenting · Learning activities for 2-month-olds",
+            sourceUrl = "https://www.unicef.org/parenting/child-care/21-learning-activities-babies-and-toddlers",
         )
     }
 

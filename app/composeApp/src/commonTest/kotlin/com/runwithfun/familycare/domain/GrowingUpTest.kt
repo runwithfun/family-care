@@ -1,6 +1,8 @@
 package com.runwithfun.familycare.domain
 
 import com.runwithfun.familycare.demo.DemoFamily
+import com.runwithfun.familycare.growing.ActivityPaper
+import com.runwithfun.familycare.growing.ActivityPdf
 import com.runwithfun.familycare.growing.GrowingUpActions
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -10,6 +12,20 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class GrowingUpTest {
+    @Test
+    fun reviewedActivityExportsBothPaperSizes() {
+        val activity = DemoFamily.tummyTimeActivity
+        val letter = ActivityPdf.render(activity).decodeToString()
+        val a4 = ActivityPdf.render(activity, ActivityPaper.A4).decodeToString()
+
+        assertTrue(letter.startsWith("%PDF-1.4"))
+        assertTrue(letter.contains("/MediaBox [0 0 612 792]"))
+        assertTrue(a4.contains("/MediaBox [0 0 595 842]"))
+        assertTrue(a4.contains("Supervised tummy time"))
+        assertTrue(a4.contains("American Academy of Pediatrics"))
+        assertTrue(a4.contains("%%EOF"))
+    }
+
     @Test
     fun switchingStagesKeepsChildHistory() {
         val plan = DemoFamily.createPlan("Sam")
