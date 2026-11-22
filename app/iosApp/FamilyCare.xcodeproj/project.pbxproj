@@ -23,7 +23,7 @@
 		};
 		100000000000000000000004 = {
 			isa = PBXGroup;
-			children = (100000000000000000000005, 100000000000000000000006);
+			children = (100000000000000000000005, 100000000000000000000013, 100000000000000000000006);
 			sourceTree = "<group>";
 		};
 		100000000000000000000005 = {
@@ -34,7 +34,7 @@
 		};
 		100000000000000000000006 = {
 			isa = PBXGroup;
-			children = (100000000000000000000003);
+			children = (100000000000000000000003, 100000000000000000000016);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -73,7 +73,12 @@
 		};
 		10000000000000000000000B = {
 			isa = PBXProject;
-			attributes = { LastUpgradeCheck = 2610; };
+			attributes = {
+				LastUpgradeCheck = 2610;
+				TargetAttributes = {
+					10000000000000000000001B = { TestTargetID = 10000000000000000000000A; };
+				};
+			};
 			buildConfigurationList = 10000000000000000000000C;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
@@ -83,7 +88,7 @@
 			productRefGroup = 100000000000000000000006;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (10000000000000000000000A);
+			targets = (10000000000000000000000A, 10000000000000000000001B);
 		};
 		10000000000000000000000C = {
 			isa = XCConfigurationList;
@@ -135,6 +140,96 @@
 			lastKnownFileType = text.xcconfig;
 			path = FamilyCare.xcconfig;
 			sourceTree = SOURCE_ROOT;
+		};
+		100000000000000000000013 = {
+			isa = PBXGroup;
+			children = (100000000000000000000014);
+			path = FamilyCareUITests;
+			sourceTree = "<group>";
+		};
+		100000000000000000000014 = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = FamilyCareSmokeTests.swift;
+			sourceTree = "<group>";
+		};
+		100000000000000000000015 = {
+			isa = PBXBuildFile;
+			fileRef = 100000000000000000000014;
+		};
+		100000000000000000000016 = {
+			isa = PBXFileReference;
+			explicitFileType = wrapper.cfbundle;
+			includeInIndex = 0;
+			path = FamilyCareUITests.xctest;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		100000000000000000000017 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (100000000000000000000015);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		100000000000000000000018 = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		100000000000000000000019 = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 10000000000000000000000B;
+			proxyType = 1;
+			remoteGlobalIDString = 10000000000000000000000A;
+			remoteInfo = FamilyCare;
+		};
+		10000000000000000000001A = {
+			isa = PBXTargetDependency;
+			target = 10000000000000000000000A;
+			targetProxy = 100000000000000000000019;
+		};
+		10000000000000000000001B = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 10000000000000000000001C;
+			buildPhases = (100000000000000000000017, 100000000000000000000018);
+			buildRules = ();
+			dependencies = (10000000000000000000001A);
+			name = FamilyCareUITests;
+			productName = FamilyCareUITests;
+			productReference = 100000000000000000000016;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		10000000000000000000001C = {
+			isa = XCConfigurationList;
+			buildConfigurations = (10000000000000000000001D, 10000000000000000000001E);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		10000000000000000000001D = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.runwithfun.familycare.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FamilyCare;
+			};
+			name = Debug;
+		};
+		10000000000000000000001E = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.runwithfun.familycare.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = FamilyCare;
+			};
+			name = Release;
 		};
 	};
 	rootObject = 10000000000000000000000B;
