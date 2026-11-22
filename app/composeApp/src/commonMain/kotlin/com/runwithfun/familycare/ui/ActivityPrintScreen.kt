@@ -117,7 +117,7 @@ fun ActivityPrintScreen(
                 border = BorderStroke(1.dp, colors.outlineVariant),
             ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Paper size", style = type.titleMedium, modifier = Modifier.semantics { heading() })
+                    Text("PDF paper size", style = type.titleMedium, modifier = Modifier.semantics { heading() })
                     FlowRow(
                         modifier = Modifier.fillMaxWidth().selectableGroup(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -158,7 +158,7 @@ fun ActivityPrintScreen(
                         Text("Print or save PDF", textAlign = TextAlign.Center)
                     }
                     Text(
-                        "On iPhone or iPad, choose Print or Save to Files. Other devices save a PDF.",
+                        "Use the same paper size in your printer settings.",
                         style = type.bodyMedium,
                         color = colors.onSurfaceVariant,
                     )
