@@ -46,6 +46,8 @@ import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.FamilyRole
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.ui.FamilyCareTheme
+import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
+import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
 import com.runwithfun.familycare.ui.home.HomeScreen
 import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
@@ -68,6 +70,7 @@ private sealed interface HomeDetail {
 @Composable
 fun FamilyCareApp() {
     val plan = remember { DemoFamily.createPlan() }
+    val assistant = rememberAssistantActions(plan)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
     var tab by remember { mutableStateOf(AppTab.HOME) }
@@ -130,7 +133,10 @@ fun FamilyCareApp() {
                                 Text(child.displayName, style = MaterialTheme.typography.titleMedium)
                                 child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
                             }
-                            AppTab.ASSISTANT -> Page("Assistant") {}
+                            AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
+                                day = assistant.task.date
+                                tab = AppTab.HOME
+                            }
                         }
                     }
                 }
