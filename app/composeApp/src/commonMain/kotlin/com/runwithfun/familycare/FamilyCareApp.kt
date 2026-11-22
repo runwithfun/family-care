@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -68,9 +70,12 @@ import com.runwithfun.familycare.ui.home.HomeScreen
 import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
 import com.runwithfun.familycare.ui.onboarding.FamilyOnboardingScreen
-import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
 import com.runwithfun.familycare.ui.onboarding.FamilyProfile
+import com.runwithfun.familycare.ui.onboarding.FamilyProfileState
+import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfileState
+import com.runwithfun.familycare.ui.settings.EditProfileScreen
+import com.runwithfun.familycare.ui.settings.SettingsScreen
 import org.jetbrains.compose.resources.painterResource
 
 private enum class AppTab(val label: String) {
@@ -82,6 +87,8 @@ private enum class AppTab(val label: String) {
 
 private sealed interface HomeDetail {
     data object Profile : HomeDetail
+    data object Settings : HomeDetail
+    data object EditProfile : HomeDetail
     data object Calendar : HomeDetail
     data class VisitEditor(val visitId: String, val fromCalendar: Boolean) : HomeDetail
     data class TaskEditor(val taskId: String?, val date: CareDate, val fromCalendar: Boolean) : HomeDetail
@@ -107,13 +114,13 @@ fun FamilyCareApp() {
                 },
             )
         } else {
-            FamilyCareNavigation(profile)
+            FamilyCareNavigation(profile, family)
         }
     }
 }
 
 @Composable
-private fun FamilyCareNavigation(profile: FamilyProfile) {
+private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileState) {
     val photo = rememberFamilyProfilePhoto(profile.photoBytes)
     val birthDate = profile.birthDate ?: CareDate(2026, 9, 28)
     val plan = remember(profile.childName, birthDate) {
@@ -136,6 +143,8 @@ private fun FamilyCareNavigation(profile: FamilyProfile) {
         when (val page = detail) {
             is HomeDetail.VisitEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
             is HomeDetail.TaskEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            HomeDetail.EditProfile -> detail = HomeDetail.Settings
+            HomeDetail.Settings -> detail = HomeDetail.Profile
             HomeDetail.Calendar, HomeDetail.Profile -> detail = null
             null -> when {
                 activityStageName != null -> activityStageName = null
@@ -181,6 +190,45 @@ private fun FamilyCareNavigation(profile: FamilyProfile) {
                                 }
                             }
                         }
+                        Button(
+                            onClick = { detail = HomeDetail.EditProfile },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.primaryContainer,
+                                contentColor = colors.onPrimaryContainer,
+                            ),
+                        ) {
+                            Text("Edit profile")
+                        }
+                        TextButton(
+                            onClick = { detail = HomeDetail.Settings },
+                            modifier = Modifier.heightIn(min = 44.dp),
+                        ) {
+                            Text("Settings")
+                        }
+                    }
+                    HomeDetail.Settings -> Page("Settings", onBack = { detail = HomeDetail.Profile }) {
+                        SettingsScreen(
+                            profile = profile,
+                            onEditProfile = { detail = HomeDetail.EditProfile },
+                            onBack = { detail = HomeDetail.Profile },
+                        )
+                    }
+                    HomeDetail.EditProfile -> Page("Edit profile", onBack = { detail = HomeDetail.Settings }) {
+                        EditProfileScreen(
+                            profile = profile,
+                            saveFailed = family.saveFailed,
+                            onSave = { name, birth, notes, photoBytes ->
+                                family.save(
+                                    childName = name,
+                                    birthDate = birth,
+                                    notes = notes,
+                                    photoBytes = photoBytes,
+                                )
+                            },
+                            onBack = { detail = HomeDetail.Settings },
+                        )
                     }
                     HomeDetail.Calendar -> CalendarScreen(
                         session = session,
