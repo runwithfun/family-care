@@ -39,10 +39,14 @@ import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
 import platform.PhotosUI.PHPickerViewController
 import platform.PhotosUI.PHPickerViewControllerDelegateProtocol
+import platform.UIKit.UIAdaptivePresentationControllerDelegateProtocol
 import platform.UIKit.UIImage
 import platform.UIKit.UIImageJPEGRepresentation
+import platform.UIKit.UIModalPresentationPageSheet
+import platform.UIKit.UIPresentationController
 import platform.UIKit.UIViewController
 import platform.UIKit.modalInPresentation
+import platform.UIKit.presentationController
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
@@ -53,12 +57,12 @@ private const val AvatarMaxPixels = 1024
 @Composable
 internal actual fun rememberOnboardingPhotoPicker(
     onResult: (OnboardingPhotoResult) -> Unit,
-): (() -> Unit)? {
+): OnboardingPhotoPicker? {
     val host = LocalUIViewController.current
     val currentResult = rememberUpdatedState(onResult)
-    val session = remember(host) { OnboardingPhotoSession(host) }
+    val session = remember(host) { OnboardingPhotoSession(host) { currentResult.value(it) } }
     DisposableEffect(session) { onDispose { session.dispose() } }
-    return { session.present { currentResult.value(it) } }
+    return remember(session) { OnboardingPhotoPicker(session::present, session::cancel) }
 }
 
 internal actual fun decodeOnboardingPhoto(bytes: ByteArray): ImageBitmap? =
@@ -68,49 +72,82 @@ internal actual fun decodeOnboardingPhoto(bytes: ByteArray): ImageBitmap? =
 
 private class OnboardingPhotoSession(
     private val host: UIViewController,
-) : NSObject(), PHPickerViewControllerDelegateProtocol {
+    private val onResult: (OnboardingPhotoResult) -> Unit,
+) : NSObject(), PHPickerViewControllerDelegateProtocol, UIAdaptivePresentationControllerDelegateProtocol {
     private var controller: PHPickerViewController? = null
     private var progress: NSProgress? = null
-    private var resultCallback: ((OnboardingPhotoResult) -> Unit)? = null
+    private var activeRequest: Any? = null
 
-    fun present(onResult: (OnboardingPhotoResult) -> Unit) {
-        if (resultCallback != null) return
+    fun present() {
+        val previous = controller
+        if (previous != null && previous.viewIfLoaded?.window == null &&
+            !previous.isBeingPresented() && !previous.isBeingDismissed()
+        ) {
+            // Accessibility dismissal can close the sheet without an adaptive delegate callback.
+            dispose()
+        }
+        if (activeRequest != null) return
         val presenter = generateSequence(host) { it.presentedViewController }.last()
-        if (presenter.view.window == null) {
+        if (presenter.viewIfLoaded?.window == null) {
             logPhotoFailure(IllegalStateException("The photo picker has no visible host"))
             onResult(OnboardingPhotoResult.Failed)
             return
         }
+        if (presenter is PHPickerViewController || presenter.isBeingPresented() || presenter.isBeingDismissed()) {
+            logPhotoFailure(IllegalStateException("The photo picker host is in a presentation transition"))
+            onResult(OnboardingPhotoResult.Failed)
+            return
+        }
+
         val config = PHPickerConfiguration().apply {
             filter = PHPickerFilter.imagesFilter
             selectionLimit = 1
         }
+        val request = Any()
         val picker = PHPickerViewController(configuration = config)
-        resultCallback = onResult
+        activeRequest = request
         controller = picker
         picker.delegate = this
-        picker.modalInPresentation = true
-        presenter.presentViewController(picker, animated = true, completion = null)
-    }
-
-    override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
-        if (controller !== picker) return
-        picker.delegate = null
-        picker.dismissViewControllerAnimated(true) {
-            controller = null
-            if (resultCallback != null) readSelection(didFinishPicking)
+        picker.modalPresentationStyle = UIModalPresentationPageSheet
+        picker.modalInPresentation = false
+        picker.presentationController?.delegate = this
+        presenter.presentViewController(picker, animated = true) {
+            if (activeRequest === request && controller == picker) {
+                picker.presentationController?.delegate = this
+            }
         }
     }
 
-    private fun readSelection(results: List<*>) {
+    override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
+        println("The iOS profile photo picker returned ${didFinishPicking.size} item(s).")
+        val request = activeRequest ?: return
+        if (controller != picker) return
+        if (didFinishPicking.isNotEmpty()) onResult(OnboardingPhotoResult.Loading)
+        detachDelegates(picker)
+        picker.dismissViewControllerAnimated(true) {
+            if (controller == picker) controller = null
+            if (activeRequest === request) readSelection(request, didFinishPicking)
+        }
+    }
+
+    override fun presentationControllerDidDismiss(presentationController: UIPresentationController) {
+        val request = activeRequest ?: return
+        val picker = controller ?: return
+        if (presentationController.presentedViewController != picker) return
+        detachDelegates(picker)
+        controller = null
+        finish(request, OnboardingPhotoResult.Cancelled)
+    }
+
+    private fun readSelection(request: Any, results: List<*>) {
         if (results.isEmpty()) {
-            finish(OnboardingPhotoResult.Cancelled)
+            finish(request, OnboardingPhotoResult.Cancelled)
             return
         }
         val provider = (results.firstOrNull() as? PHPickerResult)?.itemProvider
         if (provider == null || !provider.hasItemConformingToTypeIdentifier(ImageType)) {
             logPhotoFailure(IllegalStateException("Photos did not provide the selected image"))
-            finish(OnboardingPhotoResult.Failed)
+            finish(request, OnboardingPhotoResult.Failed)
             return
         }
         progress = provider.loadFileRepresentationForTypeIdentifier(ImageType) { url, error ->
@@ -120,24 +157,37 @@ private class OnboardingPhotoSession(
                 val file = checkNotNull(url) { "Photos returned no local file for the selected image" }
                 OnboardingPhotoResult.Selected(encodeAvatar(file))
             }.onFailure(::logPhotoFailure).getOrElse { OnboardingPhotoResult.Failed }
-            dispatch_async(dispatch_get_main_queue()) { finish(result) }
+            dispatch_async(dispatch_get_main_queue()) { finish(request, result) }
         }
     }
 
+    fun cancel() {
+        if (activeRequest == null) return
+        dispose()
+        onResult(OnboardingPhotoResult.Cancelled)
+    }
+
     fun dispose() {
-        resultCallback = null
+        activeRequest = null
         progress?.cancel()
         progress = null
-        controller?.delegate = null
-        controller?.dismissViewControllerAnimated(false, completion = null)
+        controller?.let { picker ->
+            detachDelegates(picker)
+            picker.dismissViewControllerAnimated(false, completion = null)
+        }
         controller = null
     }
 
-    private fun finish(result: OnboardingPhotoResult) {
-        val callback = resultCallback
-        resultCallback = null
+    private fun finish(request: Any, result: OnboardingPhotoResult) {
+        if (activeRequest !== request) return
+        activeRequest = null
         progress = null
-        callback?.invoke(result)
+        onResult(result)
+    }
+
+    private fun detachDelegates(picker: PHPickerViewController) {
+        picker.delegate = null
+        picker.presentationController?.delegate = null
     }
 }
 

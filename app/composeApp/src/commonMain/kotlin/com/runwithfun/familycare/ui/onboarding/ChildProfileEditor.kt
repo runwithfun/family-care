@@ -16,6 +16,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,7 +95,7 @@ class ChildProfileDraftState(
     internal fun applyPhotoResult(result: OnboardingPhotoResult) {
         photoPending = result == OnboardingPhotoResult.Loading
         when (result) {
-            OnboardingPhotoResult.Loading -> Unit
+            OnboardingPhotoResult.Loading, OnboardingPhotoResult.Cancelled -> photoFailed = false
             is OnboardingPhotoResult.Selected -> {
                 val image = decodeOnboardingPhoto(result.bytes)
                 if (image != null) {
@@ -103,14 +104,7 @@ class ChildProfileDraftState(
                 }
                 photoFailed = image == null
             }
-            OnboardingPhotoResult.Failed -> {
-                photoFailed = true
-                photoPending = false
-            }
-            OnboardingPhotoResult.Cancelled -> {
-                photoFailed = false
-                photoPending = false
-            }
+            OnboardingPhotoResult.Failed -> photoFailed = true
         }
     }
 
@@ -158,7 +152,12 @@ fun ChildProfileFields(
 ) {
     val colors = MaterialTheme.colorScheme
     val focus = LocalFocusManager.current
-    val choosePhoto = rememberOnboardingPhotoPicker(state::applyPhotoResult)
+    val photoPicker = rememberOnboardingPhotoPicker(state::applyPhotoResult)
+    DisposableEffect(state) {
+        onDispose {
+            if (state.photoPending) state.applyPhotoResult(OnboardingPhotoResult.Cancelled)
+        }
+    }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(
@@ -166,14 +165,10 @@ fun ChildProfileFields(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             ProfileAvatar(state.photoPreview, modifier = Modifier.size(78.dp))
-            if (choosePhoto != null) {
+            if (photoPicker != null) {
                 Column {
                     TextButton(
-                        onClick = {
-                            state.photoFailed = false
-                            state.photoPending = true
-                            choosePhoto()
-                        },
+                        onClick = photoPicker.launch,
                         enabled = !state.photoPending,
                         colors = ButtonDefaults.textButtonColors(contentColor = colors.secondary),
                         modifier = Modifier.heightIn(min = 44.dp),
@@ -182,7 +177,7 @@ fun ChildProfileFields(
                     }
                     if (state.photoPending) {
                         TextButton(
-                            onClick = { state.photoPending = false },
+                            onClick = photoPicker.cancel,
                             colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
                             modifier = Modifier.heightIn(min = 44.dp),
                         ) {
@@ -209,7 +204,7 @@ fun ChildProfileFields(
         }
         if (state.photoPending) {
             Text(
-                "Preparing photo… Tap Cancel photo if you closed the picker.",
+                "Preparing photo…",
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 color = colors.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,

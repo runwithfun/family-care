@@ -9,7 +9,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -17,55 +24,101 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val PhotoLogTag = "FamilyCare.Onboarding"
 private const val ProfilePhotoDimension = 1024
 
+private enum class NativePickerState { IDLE, OPEN, CANCELLED }
+
+private class AndroidPhotoLoad {
+    var token: Any? = null
+    var job: Job? = null
+
+    fun cancel() {
+        token = null
+        job?.cancel()
+        job = null
+    }
+}
+
+/**
+ * Android uses the system Photo Picker ([PickVisualMedia]), which does not need
+ * READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE. Cancel returns a null URI → [OnboardingPhotoResult.Cancelled].
+ */
 @Composable
-internal actual fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResult) -> Unit): (() -> Unit)? {
+internal actual fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResult) -> Unit): OnboardingPhotoPicker? {
     val resolver = LocalContext.current.contentResolver
     val scope = rememberCoroutineScope()
-    val picker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-        if (uri != null) {
-            onResult(OnboardingPhotoResult.Loading)
-            scope.launch {
-                val result = withContext(Dispatchers.IO) {
-                    try {
-                        val bytes = resolver.openInputStream(uri)?.use { it.readPhotoBytes() }
-                            ?: throw IOException("The selected photo could not be opened.")
-                        val bitmap = decodeBitmap(bytes)
-                        val photo = ByteArrayOutputStream().use { output ->
-                            if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 88, output)) {
-                                throw IOException("The selected photo could not be encoded.")
-                            }
-                            output.toByteArray()
+    val currentResult = rememberUpdatedState(onResult)
+    var pickerState by rememberSaveable { mutableStateOf(NativePickerState.IDLE) }
+    val load = remember { AndroidPhotoLoad() }
+    DisposableEffect(load) { onDispose { load.cancel() } }
+
+    val picker = rememberLauncherForActivityResult(PickVisualMedia()) result@{ uri ->
+        val shouldLoad = pickerState == NativePickerState.OPEN
+        pickerState = NativePickerState.IDLE
+        if (!shouldLoad) return@result
+        if (uri == null) {
+            currentResult.value(OnboardingPhotoResult.Cancelled)
+            return@result
+        }
+
+        val token = Any()
+        load.token = token
+        currentResult.value(OnboardingPhotoResult.Loading)
+        load.job = scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    val bytes = resolver.openInputStream(uri)?.use { it.readPhotoBytes() }
+                        ?: throw IOException("The selected photo could not be opened.")
+                    val bitmap = decodeBitmap(bytes)
+                    val photo = ByteArrayOutputStream().use { output ->
+                        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 88, output)) {
+                            throw IOException("The selected photo could not be encoded.")
                         }
-                        OnboardingPhotoResult.Selected(photo)
-                    } catch (canceled: CancellationException) {
-                        throw canceled
-                    } catch (error: Exception) {
-                        Log.e(PhotoLogTag, "Could not read the selected photo.", error)
-                        OnboardingPhotoResult.Failed
+                        output.toByteArray()
                     }
+                    OnboardingPhotoResult.Selected(photo)
+                } catch (canceled: CancellationException) {
+                    throw canceled
+                } catch (error: Exception) {
+                    Log.e(PhotoLogTag, "Could not read the selected photo.", error)
+                    OnboardingPhotoResult.Failed
                 }
-                onResult(result)
             }
-        } else {
-            onResult(OnboardingPhotoResult.Cancelled)
+            if (load.token === token) {
+                load.token = null
+                load.job = null
+                currentResult.value(result)
+            }
         }
     }
-    return {
-        try {
-            picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-        } catch (error: Exception) {
-            Log.e(PhotoLogTag, "Could not open the photo picker.", error)
-            onResult(OnboardingPhotoResult.Failed)
-        }
-    }
+    return OnboardingPhotoPicker(
+        launch = launchPicker@{
+            if (pickerState != NativePickerState.IDLE || load.token != null) return@launchPicker
+            pickerState = NativePickerState.OPEN
+            currentResult.value(OnboardingPhotoResult.Loading)
+            try {
+                picker.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+            } catch (error: Exception) {
+                Log.e(PhotoLogTag, "Could not open the photo picker.", error)
+                pickerState = NativePickerState.IDLE
+                currentResult.value(OnboardingPhotoResult.Failed)
+            }
+        },
+        cancel = {
+            if (pickerState == NativePickerState.OPEN) pickerState = NativePickerState.CANCELLED
+            load.cancel()
+            currentResult.value(OnboardingPhotoResult.Cancelled)
+        },
+    )
 }
 
 internal actual fun decodeOnboardingPhoto(bytes: ByteArray): ImageBitmap? = try {
@@ -103,9 +156,10 @@ private fun decodeBitmap(bytes: ByteArray): Bitmap {
         ?: throw IOException("The photo decoder could not read the image.")
 }
 
-private fun InputStream.readPhotoBytes(): ByteArray = ByteArrayOutputStream().use { output ->
+private suspend fun InputStream.readPhotoBytes(): ByteArray = ByteArrayOutputStream().use { output ->
     val buffer = ByteArray(16 * 1024)
     while (true) {
+        coroutineContext.ensureActive()
         val count = read(buffer)
         if (count == -1) break
         if (output.size() + count > MaxOnboardingPhotoBytes) {

@@ -4,6 +4,8 @@
 <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Family Care can use the photo you choose as your child's optional profile photo.</string>
     <key>UILaunchScreen</key>
     <dict/>
 </dict>
