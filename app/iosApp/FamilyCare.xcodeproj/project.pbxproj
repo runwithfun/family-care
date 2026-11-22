@@ -28,7 +28,7 @@
 		};
 		100000000000000000000005 = {
 			isa = PBXGroup;
-			children = (100000000000000000000002);
+			children = (100000000000000000000002, 100000000000000000000021);
 			path = FamilyCare;
 			sourceTree = "<group>";
 		};
@@ -63,13 +63,29 @@
 		10000000000000000000000A = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 10000000000000000000000D;
-			buildPhases = (100000000000000000000009, 100000000000000000000007, 100000000000000000000008);
+			buildPhases = (100000000000000000000009, 100000000000000000000007, 100000000000000000000008, 100000000000000000000023);
 			buildRules = ();
 			dependencies = ();
 			name = FamilyCare;
 			productName = FamilyCare;
 			productReference = 100000000000000000000003;
 			productType = "com.apple.product-type.application";
+		};
+		100000000000000000000021 = {
+			isa = PBXFileReference;
+			lastKnownFileType = folder.assetcatalog;
+			path = Assets.xcassets;
+			sourceTree = "<group>";
+		};
+		100000000000000000000022 = {
+			isa = PBXBuildFile;
+			fileRef = 100000000000000000000021;
+		};
+		100000000000000000000023 = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (100000000000000000000022);
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 		10000000000000000000000B = {
 			isa = PBXProject;
