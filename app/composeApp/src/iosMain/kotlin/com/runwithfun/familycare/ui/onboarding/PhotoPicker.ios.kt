@@ -46,6 +46,7 @@ import platform.UIKit.UIModalPresentationPageSheet
 import platform.UIKit.UIPresentationController
 import platform.UIKit.UIViewController
 import platform.UIKit.modalInPresentation
+import platform.UIKit.presentationController
 import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
