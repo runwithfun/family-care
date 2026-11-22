@@ -4,6 +4,10 @@
 <dict>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>Family Care uses your photo library so you can choose an optional profile photo for your child.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>Family Care only reads a photo you choose for the child profile; it does not save new photos to your library.</string>
     <key>UILaunchScreen</key>
     <dict/>
 </dict>

@@ -25,6 +25,10 @@ import kotlinx.coroutines.withContext
 private const val PhotoLogTag = "FamilyCare.Onboarding"
 private const val ProfilePhotoDimension = 1024
 
+/**
+ * Android uses the system Photo Picker ([PickVisualMedia]), which does not need
+ * READ_MEDIA_IMAGES / READ_EXTERNAL_STORAGE. Cancel returns a null URI → [OnboardingPhotoResult.Cancelled].
+ */
 @Composable
 internal actual fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResult) -> Unit): (() -> Unit)? {
     val resolver = LocalContext.current.contentResolver

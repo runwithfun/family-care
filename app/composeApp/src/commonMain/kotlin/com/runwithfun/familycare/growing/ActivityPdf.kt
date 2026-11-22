@@ -13,47 +13,96 @@ object ActivityPdf {
 
     fun render(activity: ReviewedActivity, paper: ActivityPaper = ActivityPaper.LETTER): ByteArray {
         val lines = buildList {
-            add("Family Care")
-            add(activity.title)
-            add(activity.stage.label)
-            add("")
-            add(activity.summary)
-            add("")
-            add("Steps")
+            add(PdfLine("Family Care · printable play", LineKind.Brand))
+            add(PdfLine(activity.title, LineKind.Title))
+            add(PdfLine(activity.stage.label, LineKind.Stage))
+            add(PdfLine("", LineKind.Spacer))
+            add(PdfLine(activity.summary, LineKind.Body))
+            add(PdfLine("", LineKind.Spacer))
+            add(PdfLine("Steps", LineKind.Section))
             activity.steps.forEachIndexed { index, step ->
-                add("${index + 1}. $step")
+                add(PdfLine("${index + 1}. $step", LineKind.Step, index))
             }
-            add("")
-            add("Source: ${activity.sourceLabel}")
+            add(PdfLine("", LineKind.Spacer))
+            add(PdfLine("Source: ${activity.sourceLabel}", LineKind.Source))
         }
-        return buildTextPdf(lines, paper)
+        return buildColorfulPdf(lines, paper)
     }
 
-    private fun buildTextPdf(lines: List<String>, paper: ActivityPaper): ByteArray {
-        val margin = 56
+    private fun buildColorfulPdf(lines: List<PdfLine>, paper: ActivityPaper): ByteArray {
+        val margin = 48
         val content = buildString {
-            append("0.92 0.74 0.79 rg $margin ${paper.height - 53} 42 4 re f\n0 g\n")
-            var baseline = paper.height - 76
-            lines.forEachIndexed { index, line ->
-                if (line.isBlank()) {
+            // Soft page wash
+            append("0.98 0.96 0.92 rg 0 0 ${paper.width} ${paper.height} re f\n")
+            // Top banner
+            append("0.35 0.72 0.78 rg 0 ${paper.height - 110} ${paper.width} 110 re f\n")
+            append("0.98 0.62 0.45 rg 0 ${paper.height - 118} ${paper.width} 8 re f\n")
+            // Decorative circles (kid-friendly blobs)
+            append("0.98 0.78 0.35 rg ${circle(margin + 18, paper.height - 42, 16)}")
+            append("0.74 0.55 0.88 rg ${circle(paper.width - margin - 28, paper.height - 58, 22)}")
+            append("0.55 0.82 0.55 rg ${circle(paper.width - margin - 70, paper.height - 28, 10)}")
+            append("0.98 0.55 0.62 rg ${circle(margin + 70, 70, 28)}")
+            append("0.55 0.72 0.95 rg ${circle(paper.width - margin - 40, 90, 18)}")
+            // Content card
+            val cardBottom = 56
+            val cardTop = paper.height - 140
+            append("1 1 1 rg $margin $cardBottom ${paper.width - margin * 2} ${cardTop - cardBottom} re f\n")
+            append("0.90 0.88 0.84 RG 1.5 w $margin $cardBottom ${paper.width - margin * 2} ${cardTop - cardBottom} re S\n")
+
+            var baseline = paper.height - 168
+            val textLeft = margin + 22
+            val maxTextWidth = paper.width - margin * 2 - 44
+            lines.forEach { line ->
+                if (line.kind == LineKind.Spacer || line.text.isBlank()) {
                     baseline -= 12
-                } else {
-                    val size = when (index) {
-                        0 -> 10
-                        1 -> 26
-                        else -> 14
-                    }
-                    val font = if (index <= 1 || line == "Steps") "F2" else "F1"
-                    for (part in wrap(line, (paper.width - margin * 2) * 10 / size)) {
-                        check(baseline >= margin) { "The activity does not fit on one ${paper.label} page" }
-                        append("BT /$font $size Tf $margin $baseline Td (")
-                        append(escapePdfString(part))
-                        append(") Tj ET\n")
-                        baseline -= size + if (index <= 2) 13 else 6
-                    }
-                    if (index >= 5) baseline -= 5
+                    return@forEach
                 }
+                val size = when (line.kind) {
+                    LineKind.Brand -> 11
+                    LineKind.Title -> 24
+                    LineKind.Stage -> 12
+                    LineKind.Section -> 16
+                    LineKind.Step -> 13
+                    LineKind.Source -> 10
+                    LineKind.Body -> 13
+                    LineKind.Spacer -> 12
+                }
+                val font = when (line.kind) {
+                    LineKind.Title, LineKind.Section, LineKind.Brand -> "F2"
+                    else -> "F1"
+                }
+                append(
+                    when (line.kind) {
+                        LineKind.Brand -> "0.18 0.42 0.48 rg\n"
+                        LineKind.Title -> "0.18 0.22 0.28 rg\n"
+                        LineKind.Stage -> "0.55 0.35 0.62 rg\n"
+                        LineKind.Section -> "0.95 0.45 0.35 rg\n"
+                        LineKind.Step -> stepColor(line.stepIndex)
+                        LineKind.Source -> "0.45 0.45 0.48 rg\n"
+                        else -> "0.22 0.24 0.28 rg\n"
+                    },
+                )
+                if (line.kind == LineKind.Step) {
+                    val badgeY = baseline - 2
+                    append("${stepFill(line.stepIndex)}${circle(textLeft + 8, badgeY + 4, 9)}")
+                }
+                for (part in wrap(line.text, maxTextWidth * 10 / size)) {
+                    check(baseline >= margin + 28) { "The activity does not fit on one ${paper.label} page" }
+                    val x = if (line.kind == LineKind.Step) textLeft + 22 else textLeft
+                    append("BT /$font $size Tf $x $baseline Td (")
+                    append(escapePdfString(part))
+                    append(") Tj ET\n")
+                    baseline -= size + when (line.kind) {
+                        LineKind.Title -> 10
+                        LineKind.Brand, LineKind.Stage -> 8
+                        LineKind.Section -> 10
+                        LineKind.Step -> 8
+                        else -> 6
+                    }
+                }
+                if (line.kind == LineKind.Step) baseline -= 4
             }
+            append("0 g\n")
         }
 
         val objects = listOf(
@@ -84,6 +133,32 @@ object ActivityPdf {
             .append(" /Root 1 0 R >>\n")
         body.append("startxref\n").append(xrefPosition).append("\n%%EOF\n")
         return body.toString().encodeToByteArray()
+    }
+
+    private fun circle(cx: Int, cy: Int, r: Int): String {
+        // Four cubic Bézier approximations of a circle
+        val k = (0.552284749831 * r).toInt().coerceAtLeast(1)
+        return buildString {
+            append("$cx ${cy + r} m ")
+            append("${cx + k} ${cy + r} ${cx + r} ${cy + k} ${cx + r} $cy c ")
+            append("${cx + r} ${cy - k} ${cx + k} ${cy - r} $cx ${cy - r} c ")
+            append("${cx - k} ${cy - r} ${cx - r} ${cy - k} ${cx - r} $cy c ")
+            append("${cx - r} ${cy + k} ${cx - k} ${cy + r} $cx ${cy + r} c f\n")
+        }
+    }
+
+    private fun stepColor(index: Int): String = when (index % 4) {
+        0 -> "0.12 0.45 0.55 rg\n"
+        1 -> "0.55 0.28 0.55 rg\n"
+        2 -> "0.20 0.50 0.28 rg\n"
+        else -> "0.70 0.35 0.18 rg\n"
+    }
+
+    private fun stepFill(index: Int): String = when (index % 4) {
+        0 -> "0.72 0.90 0.93 rg "
+        1 -> "0.90 0.80 0.95 rg "
+        2 -> "0.78 0.93 0.78 rg "
+        else -> "0.98 0.86 0.76 rg "
     }
 
     private fun wrap(value: String, maxWidth: Int): List<String> = buildList {
@@ -124,9 +199,14 @@ object ActivityPdf {
                 '’' -> append("\\222")
                 '“' -> append("\\223")
                 '”' -> append("\\224")
+                '·' -> append("\\267")
                 in '\u00a0'..'\u00ff' -> append('\\').append(char.code.toString(8).padStart(3, '0'))
                 else -> append('?')
             }
         }
     }
+
+    private enum class LineKind { Brand, Title, Stage, Body, Section, Step, Source, Spacer }
+
+    private data class PdfLine(val text: String, val kind: LineKind, val stepIndex: Int = 0)
 }
