@@ -79,6 +79,13 @@ private class OnboardingPhotoSession(
     private var activeRequest: Any? = null
 
     fun present() {
+        val previous = controller
+        if (previous != null && previous.viewIfLoaded?.window == null &&
+            !previous.isBeingPresented() && !previous.isBeingDismissed()
+        ) {
+            // Accessibility dismissal can close the sheet without an adaptive delegate callback.
+            dispose()
+        }
         if (activeRequest != null) return
         val presenter = generateSequence(host) { it.presentedViewController }.last()
         if (presenter.viewIfLoaded?.window == null) {
@@ -104,7 +111,6 @@ private class OnboardingPhotoSession(
         picker.modalPresentationStyle = UIModalPresentationPageSheet
         picker.modalInPresentation = false
         picker.presentationController?.delegate = this
-        onResult(OnboardingPhotoResult.Loading)
         presenter.presentViewController(picker, animated = true) {
             if (activeRequest === request && controller === picker) {
                 picker.presentationController?.delegate = this
@@ -115,6 +121,7 @@ private class OnboardingPhotoSession(
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
         val request = activeRequest ?: return
         if (controller !== picker) return
+        if (didFinishPicking.isNotEmpty()) onResult(OnboardingPhotoResult.Loading)
         detachDelegates(picker)
         picker.dismissViewControllerAnimated(true) {
             if (controller === picker) controller = null
