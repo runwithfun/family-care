@@ -1,17 +1,14 @@
-name: iOS demo smoke
+name: iOS morning runtime verification
 
 on:
-  pull_request:
-    paths:
-      - 'app/**'
-      - '.github/workflows/ios-smoke.yml'
-  workflow_dispatch:
+  push:
+    branches: [test/morning-family-care-runtime]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ios-demo-smoke-${{ github.event.pull_request.number || github.ref }}
+  group: ios-morning-runtime-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -85,6 +82,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/family-care-derived" \
             -resultBundlePath "$RUNNER_TEMP/family-care-ui.xcresult" \
             -parallel-testing-enabled NO -collect-test-diagnostics never \
+            -only-testing:FamilyCareUITests/FamilyCareSmokeTests/testHackathonDemo \
             CODE_SIGNING_ALLOWED=NO test-without-building
       - name: Export synthetic demo screenshots
         if: always()
@@ -96,7 +94,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: family-care-simulator-screens
+          name: family-care-morning-ios-evidence
           path: ${{ runner.temp }}/family-care-attached-screens
           if-no-files-found: ignore
           retention-days: 3
