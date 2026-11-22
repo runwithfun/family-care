@@ -32,6 +32,17 @@ class GrowingUpTest {
     }
 
     @Test
+    fun stepTextUsesDarkInkAfterDrawingItsPastelBadge() {
+        for (paper in ActivityPaper.entries) {
+            val lines = ActivityPdf.render(DemoFamily.tummyTimeActivity, paper).decodeToString().lines()
+            val firstStep = lines.indexOfFirst { it.contains("(1. Place your awake baby") }
+            assertTrue(firstStep >= 2)
+            assertTrue(lines[firstStep - 2].startsWith("0.72 0.90 0.93 rg "))
+            assertEquals("0.12 0.45 0.55 rg", lines[firstStep - 1])
+        }
+    }
+
+    @Test
     fun switchingStagesKeepsChildHistory() {
         val plan = DemoFamily.createPlan("Sam")
         val childId = plan.people.first { it.role == FamilyRole.CHILD }.id
