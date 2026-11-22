@@ -82,6 +82,9 @@ class CarePlanCalendarTest {
         // 1 Nov 2026 is Sunday → six leading blanks in a Monday-first grid.
         assertEquals(6, CareCalendar.dayOfWeekMondayBased(2026, 11, 1))
         assertEquals(30, CareCalendar.lengthOfMonth(2026, 11))
+        assertEquals(CareDate(2026, 11, 24), CareCalendar.shiftDay(CareDate(2026, 11, 23), 1))
+        assertEquals(CareDate(2026, 12, 1), CareCalendar.shiftDay(CareDate(2026, 11, 30), 1))
+        assertEquals(CareDate(2026, 11, 30), CareCalendar.shiftDay(CareDate(2026, 12, 1), -1))
         assertEquals(
             listOf(2026 to 12, 2027 to 1),
             listOf(

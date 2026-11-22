@@ -138,9 +138,13 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
     val growingState = rememberSaveableStateHolder()
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
     var day by remember { mutableStateOf(DemoFamily.today) }
+    var focusedVisitId by remember { mutableStateOf<String?>(null) }
     PlatformBackHandler(enabled = detail != null || tab != AppTab.HOME) {
         when (val page = detail) {
-            is HomeDetail.VisitEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            is HomeDetail.VisitEditor -> {
+                focusedVisitId = page.visitId
+                detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            }
             is HomeDetail.TaskEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
             is HomeDetail.EditProfile -> detail = page.returnTo
             HomeDetail.Settings -> detail = HomeDetail.Profile
@@ -232,17 +236,30 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                     HomeDetail.Calendar -> CalendarScreen(
                         session = session,
                         selected = day,
-                        onSelectDate = { day = it },
-                        onOpenVisit = { detail = HomeDetail.VisitEditor(it, fromCalendar = true) },
+                        onSelectDate = {
+                            day = it
+                            focusedVisitId = null
+                        },
+                        onOpenVisit = {
+                            focusedVisitId = it
+                            detail = HomeDetail.VisitEditor(it, fromCalendar = true)
+                        },
                         onOpenTask = { detail = HomeDetail.TaskEditor(it, day, fromCalendar = true) },
                         onAddPlanItem = { detail = HomeDetail.TaskEditor(null, it, fromCalendar = true) },
                         onBackHome = { detail = null },
+                        focusedVisitId = focusedVisitId,
                     )
                     is HomeDetail.VisitEditor -> VisitDetailScreen(
                         session = session,
                         visitId = page.visitId,
-                        onBack = { detail = if (page.fromCalendar) HomeDetail.Calendar else null },
-                        onSaved = { day = it },
+                        onBack = {
+                            focusedVisitId = page.visitId
+                            detail = if (page.fromCalendar) HomeDetail.Calendar else null
+                        },
+                        onSaved = {
+                            day = it
+                            focusedVisitId = page.visitId
+                        },
                     )
                     is HomeDetail.TaskEditor -> TaskDetailScreen(
                         session = session,
@@ -268,7 +285,10 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                             onOpenCalendar = { detail = HomeDetail.Calendar },
                             onOpenEvent = { event ->
                                 detail = when (event) {
-                                    is Visit -> HomeDetail.VisitEditor(event.id, fromCalendar = false)
+                                    is Visit -> {
+                                        focusedVisitId = event.id
+                                        HomeDetail.VisitEditor(event.id, fromCalendar = false)
+                                    }
                                     is Task -> HomeDetail.TaskEditor(event.id, event.date, fromCalendar = false)
                                 }
                             },
