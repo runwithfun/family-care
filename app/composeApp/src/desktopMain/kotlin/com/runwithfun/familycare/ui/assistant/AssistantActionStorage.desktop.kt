@@ -10,8 +10,12 @@ internal actual fun rememberAssistantActionStorage(): AssistantActionStorage = r
     object : AssistantActionStorage {
         override fun read(): String? = preferences.get(ConfirmedActionKey, null)
 
-        override fun write(actionId: String) {
-            preferences.put(ConfirmedActionKey, actionId)
+        override fun write(actionId: String?) {
+            if (actionId == null) {
+                preferences.remove(ConfirmedActionKey)
+            } else {
+                preferences.put(ConfirmedActionKey, actionId)
+            }
             preferences.flush()
         }
     }

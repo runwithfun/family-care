@@ -13,7 +13,7 @@ internal actual fun rememberAssistantActionStorage(): AssistantActionStorage {
         object : AssistantActionStorage {
             override fun read(): String? = preferences.getString(ConfirmedActionKey, null)
 
-            override fun write(actionId: String) {
+            override fun write(actionId: String?) {
                 check(preferences.edit().putString(ConfirmedActionKey, actionId).commit()) {
                     "Assistant action could not be written to device preferences"
                 }

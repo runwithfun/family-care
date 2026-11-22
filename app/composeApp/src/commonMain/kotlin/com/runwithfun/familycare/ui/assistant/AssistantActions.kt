@@ -15,7 +15,7 @@ internal const val ConfirmedActionKey = "family-care.demo.confirmed-assistant-ac
 
 internal interface AssistantActionStorage {
     fun read(): String?
-    fun write(actionId: String)
+    fun write(actionId: String?)
 }
 
 @Composable
@@ -63,8 +63,18 @@ class AssistantActions internal constructor(
         if (confirmed) return true
         if (!canConfirm) return false
         return try {
-            plan.confirm(proposal)
-            storage.write(task.id)
+            val previousActionId = storage.read()
+            try {
+                storage.write(task.id)
+                plan.confirm(proposal)
+            } catch (error: Exception) {
+                try {
+                    storage.write(previousActionId)
+                } catch (rollbackError: Exception) {
+                    println("Could not roll back local assistant action ${task.id}\n${rollbackError.stackTraceToString()}")
+                }
+                throw error
+            }
             confirmed = true
             errorMessage = null
             true

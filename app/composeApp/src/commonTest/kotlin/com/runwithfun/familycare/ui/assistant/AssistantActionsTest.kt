@@ -57,15 +57,50 @@ class AssistantActionsTest {
         assertEquals(0, storage.writes)
     }
 
-    private class MemoryStorage(var value: String? = null) : AssistantActionStorage {
+    @Test
+    fun failedStorageWriteLeavesThePlanAndPreviousActionUnchanged() {
+        val task = DemoFamily.recoveryQuestion.task
+        val plan = DemoFamily.createPlan()
+        val previousActionId = "another-confirmed-action"
+        val storage = MemoryStorage(value = previousActionId, failWritingId = task.id)
+        val actions = AssistantActions(plan, storage)
+
+        assertFalse(actions.confirm())
+        assertFalse(actions.confirmed)
+        assertNotNull(actions.errorMessage)
+        assertFalse(plan.eventsOn(task.date).any { it.id == task.id })
+        assertEquals(previousActionId, storage.value)
+        assertFalse(AssistantActions(DemoFamily.createPlan(), storage).confirmed)
+    }
+
+    @Test
+    fun conflictingPlanTaskClearsAnUncommittedAction() {
+        val task = DemoFamily.recoveryQuestion.task
+        val existingTask = task.copy(title = "Keep this existing follow-up")
+        val plan = DemoFamily.createPlan()
+        plan.addEvent(existingTask)
+        val storage = MemoryStorage()
+        val actions = AssistantActions(plan, storage)
+
+        assertFalse(actions.confirm())
+        assertFalse(actions.confirmed)
+        assertEquals(listOf(existingTask), plan.eventsOn(task.date).filter { it.id == task.id })
+        assertNull(storage.value)
+    }
+
+    private class MemoryStorage(
+        var value: String? = null,
+        private val failWritingId: String? = null,
+    ) : AssistantActionStorage {
         var writes = 0
             private set
 
         override fun read(): String? = value
 
-        override fun write(actionId: String) {
+        override fun write(actionId: String?) {
             value = actionId
             writes++
+            check(failWritingId == null || actionId != failWritingId) { "Storage write failed" }
         }
     }
 }
