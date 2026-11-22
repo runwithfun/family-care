@@ -24,6 +24,11 @@ class GrowingUpTest {
         assertTrue(a4.contains("Supervised tummy time"))
         assertTrue(a4.contains("American Academy of Pediatrics"))
         assertTrue(a4.contains("%%EOF"))
+        // Colorful kid-friendly styling (RGB fills + decorative shapes)
+        assertTrue(a4.contains("0.35 0.72 0.78 rg"))
+        assertTrue(a4.contains("0.98 0.62 0.45 rg"))
+        assertTrue(a4.contains("Family Care"))
+        assertTrue(a4.contains("Steps"))
     }
 
     @Test
