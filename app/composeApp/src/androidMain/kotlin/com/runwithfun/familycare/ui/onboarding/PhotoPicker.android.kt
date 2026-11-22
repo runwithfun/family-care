@@ -53,6 +53,8 @@ internal actual fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResu
                 }
                 onResult(result)
             }
+        } else {
+            onResult(OnboardingPhotoResult.Cancelled)
         }
     }
     return {

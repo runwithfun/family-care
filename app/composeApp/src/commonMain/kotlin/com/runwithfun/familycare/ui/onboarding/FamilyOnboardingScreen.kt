@@ -47,6 +47,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -70,24 +73,28 @@ fun FamilyOnboardingScreen(
     var photo by remember { mutableStateOf<ByteArray?>(null) }
     var preview by remember { mutableStateOf<ImageBitmap?>(null) }
     var photoFailed by remember { mutableStateOf(false) }
+    var photoPending by remember { mutableStateOf(false) }
     val scroll = remember(showProfile) { ScrollState(0) }
 
     val choosePhoto = rememberOnboardingPhotoPicker { result ->
-        if (result is OnboardingPhotoResult.Selected) {
-            val image = decodeOnboardingPhoto(result.bytes)
-            if (image != null) {
-                photo = result.bytes
-                preview = image
+        photoPending = false
+        when (result) {
+            is OnboardingPhotoResult.Selected -> {
+                val image = decodeOnboardingPhoto(result.bytes)
+                if (image != null) {
+                    photo = result.bytes
+                    preview = image
+                }
+                photoFailed = image == null
             }
-            photoFailed = image == null
-        } else {
-            photoFailed = true
+            OnboardingPhotoResult.Failed -> photoFailed = true
+            OnboardingPhotoResult.Cancelled -> Unit
         }
     }
     val focus = LocalFocusManager.current
     val complete: () -> Unit = {
         val childName = name.trim()
-        if (childName.isNotEmpty()) {
+        if (childName.isNotEmpty() && !photoPending) {
             focus.clearFocus()
             onComplete(childName, photo)
         }
@@ -128,7 +135,12 @@ fun FamilyOnboardingScreen(
                             if (choosePhoto != null) {
                                 Column {
                                     TextButton(
-                                        onClick = choosePhoto,
+                                        onClick = {
+                                            photoFailed = false
+                                            photoPending = true
+                                            choosePhoto()
+                                        },
+                                        enabled = !photoPending,
                                         colors = ButtonDefaults.textButtonColors(contentColor = Rose),
                                         modifier = Modifier.heightIn(min = 44.dp),
                                     ) {
@@ -141,6 +153,7 @@ fun FamilyOnboardingScreen(
                                                 preview = null
                                                 photoFailed = false
                                             },
+                                            enabled = !photoPending,
                                             colors = ButtonDefaults.textButtonColors(contentColor = SecondaryInk),
                                             modifier = Modifier.heightIn(min = 44.dp),
                                         ) {
@@ -156,6 +169,14 @@ fun FamilyOnboardingScreen(
                                     }
                                 }
                             }
+                        }
+                        if (photoPending) {
+                            Text(
+                                "Preparing photo…",
+                                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                                color = SecondaryInk,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
                         }
                         if (photoFailed) {
                             Text(
@@ -223,7 +244,7 @@ fun FamilyOnboardingScreen(
                 }
                 Button(
                     onClick = if (showProfile) complete else ({ showProfile = true }),
-                    enabled = !showProfile || name.isNotBlank(),
+                    enabled = !showProfile || (name.isNotBlank() && !photoPending),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).heightIn(min = 54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(

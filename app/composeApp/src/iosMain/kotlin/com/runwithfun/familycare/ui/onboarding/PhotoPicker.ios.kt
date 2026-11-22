@@ -104,7 +104,7 @@ private class OnboardingPhotoSession(
 
     private fun readSelection(results: List<*>) {
         if (results.isEmpty()) {
-            resultCallback = null
+            finish(OnboardingPhotoResult.Cancelled)
             return
         }
         val provider = (results.firstOrNull() as? PHPickerResult)?.itemProvider
