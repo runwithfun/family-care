@@ -29,12 +29,12 @@ final class FamilyCareSmokeTests: XCTestCase {
         capture("FamilyCare-Records", in: app)
 
         tap("Assistant", in: app)
-        assertVisible("Add to Today", in: app)
-        capture("FamilyCare-Assistant", in: app)
         tap("Open original note", in: app)
         assertVisible("Original visit note", in: app)
         assertVisible("demo-recovery-note.txt", in: app)
         tap("Close", in: app)
+        assertVisible("Add to Today", in: app)
+        capture("FamilyCare-Assistant", in: app)
         tap("Add to Today", in: app)
 
         let followUp = "Ask about recovery at today's visit"
