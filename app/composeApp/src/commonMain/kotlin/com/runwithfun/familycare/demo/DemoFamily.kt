@@ -29,9 +29,31 @@ object DemoFamily {
     val today = CareDate(2026, 11, 23)
 
     private const val recoveryVisitId = "demo-recovery-visit"
-    private const val recoveryDocumentId = "demo-recovery-note"
-    private const val immunizationDocumentId = "demo-immunizations"
-    private val immunizationDate = CareDate(2026, 11, 2)
+    const val recoveryDocumentId = "demo-recovery-note"
+    const val immunizationDocumentId = "demo-immunizations"
+    const val immunizationPdfStorageKey = "documents/demo-immunizations.pdf"
+    const val immunizationAField = "Example immunization A date"
+    const val immunizationBField = "Example immunization B date"
+    const val immunizationAName = "Example immunization A"
+    val immunizationDate = CareDate(2026, 11, 2)
+
+    /** Readable recovery note for Assistant (#7). Kept as on-device text. */
+    const val recoveryNoteText =
+        "Fictional clinic note for demonstration. Follow-up booked at 14:30. " +
+            "Bring any questions about your recovery."
+
+    fun immunizationPdfBody(childName: String = "Maya"): String =
+        """
+        Example Family Clinic — Immunization record (synthetic demo PDF)
+        Patient: $childName
+        Date of birth: 2026-09-28
+
+        Documented doses on this copy:
+        Example immunization A: $immunizationDate
+
+        Example immunization B: not listed on this copy.
+        Contact the clinic for a complete record before assuming any missing dose status.
+        """.trimIndent()
 
     val newbornObservation = GrowingObservation(
         id = "demo-obs-newborn-lift",
@@ -122,6 +144,7 @@ object DemoFamily {
                 personId = childId,
                 title = "Request a copy of the immunization record",
                 date = today,
+                sourceDocumentId = immunizationDocumentId,
             ),
         ),
         documents = listOf(
@@ -132,10 +155,7 @@ object DemoFamily {
                 original = DocumentOriginal(
                     fileName = "demo-recovery-note.txt",
                     mediaType = "text/plain",
-                    content = OriginalContent.Text(
-                        "Fictional clinic note for demonstration. Follow-up booked at 14:30. " +
-                            "Bring any questions about your recovery.",
-                    ),
+                    content = OriginalContent.Text(recoveryNoteText),
                 ),
                 fields = listOf(
                     DocumentField(
@@ -151,27 +171,26 @@ object DemoFamily {
                 personId = childId,
                 kind = DocumentKind.IMMUNIZATION_RECORD,
                 original = DocumentOriginal(
-                    fileName = "demo-immunizations.txt",
-                    mediaType = "text/plain",
-                    content = OriginalContent.Text(
-                        "Fictional record for demonstration. Example immunization A: $immunizationDate.",
-                    ),
+                    fileName = "demo-immunizations.pdf",
+                    mediaType = "application/pdf",
+                    content = OriginalContent.StoredFile(immunizationPdfStorageKey),
                 ),
                 fields = listOf(
                     DocumentField(
-                        label = "Administration date",
+                        label = immunizationAField,
                         proposal = ExtractedValue(
                             immunizationDate.toString(),
-                            "Example immunization A: $immunizationDate.",
+                            "Example immunization A: $immunizationDate",
                         ),
                     ),
+                    DocumentField(label = immunizationBField),
                 ),
             ),
         ),
         recordedImmunizations = listOf(
             RecordedImmunization(
                 personId = childId,
-                name = "Example immunization A",
+                name = immunizationAName,
                 dateAdministered = immunizationDate,
                 sourceDocumentId = immunizationDocumentId,
             ),
