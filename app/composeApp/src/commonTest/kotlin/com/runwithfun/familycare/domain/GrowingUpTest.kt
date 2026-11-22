@@ -61,15 +61,15 @@ class GrowingUpTest {
         val childId = plan.people.first { it.role == FamilyRole.CHILD }.id
 
         assertEquals(
-            listOf(DemoFamily.newbornObservation),
+            listOf(DemoFamily.newbornObservation, DemoFamily.rattleObservation),
             plan.observations(childId, AgeStage.NEWBORN_0_2_MONTHS),
         )
         assertEquals(
-            listOf(DemoFamily.infantObservation),
+            emptyList(),
             plan.observations(childId, AgeStage.INFANT_2_4_MONTHS),
         )
         assertEquals(
-            listOf(DemoFamily.newbornObservation, DemoFamily.infantObservation),
+            listOf(DemoFamily.newbornObservation, DemoFamily.rattleObservation),
             plan.observations(childId),
         )
     }
@@ -104,7 +104,7 @@ class GrowingUpTest {
         assertEquals(visit.id, discussion.visitId)
         assertTrue(discussion.title.startsWith("Discuss:"))
         assertEquals(
-            listOf(DemoFamily.newbornObservation),
+            listOf(DemoFamily.newbornObservation, DemoFamily.rattleObservation),
             plan.observations(child.id, AgeStage.NEWBORN_0_2_MONTHS),
         )
     }

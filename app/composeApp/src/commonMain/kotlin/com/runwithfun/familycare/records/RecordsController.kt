@@ -74,8 +74,14 @@ class RecordsController(
     fun importSyntheticImmunizationPdf(): Boolean = runLocal("import synthetic clinic PDF") {
         val bytes = buildSyntheticClinicPdf(pdfBodyText)
         require(bytes.isPdfHeader()) { "Synthetic PDF builder did not produce a PDF header." }
-        require(bytes.containsLatin1("Example immunization A")) {
-            "Synthetic PDF is missing the immunization A marker."
+        require(
+            bytes.containsLatin1(DemoFamily.immunizationDocumentDateExcerpt) &&
+                bytes.containsLatin1(DemoFamily.missingImmunizationExcerpt) &&
+                bytes.containsLatin1(DemoFamily.noVaccinationEntriesExcerpt),
+        ) {
+            "Synthetic immunization PDF is missing an expected source line. " +
+                "Expected: ${DemoFamily.immunizationDocumentDateExcerpt}, " +
+                "${DemoFamily.missingImmunizationExcerpt}, ${DemoFamily.noVaccinationEntriesExcerpt}."
         }
         files.writeBytes(DemoFamily.immunizationPdfStorageKey, bytes)
         plan.setDocumentOriginal(
@@ -92,37 +98,7 @@ class RecordsController(
 
     fun reopenOriginal(documentId: String): RetrievedOriginal? {
         return try {
-            val document = plan.document(documentId)
-                ?: error("Unknown document: $documentId")
-            val retrieved = when (val content = document.original.content) {
-                is OriginalContent.Text -> RetrievedOriginal(
-                    documentId = document.id,
-                    fileName = document.original.fileName,
-                    mediaType = document.original.mediaType,
-                    storageKey = null,
-                    byteSize = content.value.encodeToByteArray().size,
-                    isPdf = false,
-                    textPreview = content.value,
-                )
-                is OriginalContent.StoredFile -> {
-                    val bytes = files.readBytes(content.storageKey)
-                        ?: error("Stored original is missing for key ${content.storageKey}")
-                    require(document.original.mediaType != "application/pdf" || bytes.isPdfHeader()) {
-                        "Stored original for ${content.storageKey} is not a PDF (${bytes.size} bytes)."
-                    }
-                    RetrievedOriginal(
-                        documentId = document.id,
-                        fileName = document.original.fileName,
-                        mediaType = document.original.mediaType,
-                        storageKey = content.storageKey,
-                        byteSize = bytes.size,
-                        isPdf = bytes.isPdfHeader(),
-                        textPreview = bytes.takeUnless { it.isPdfHeader() }
-                            ?.decodeToString(throwOnInvalidSequence = false),
-                        pdfBytes = bytes.takeIf { it.isPdfHeader() },
-                    )
-                }
-            }
+            val retrieved = readOriginal(documentId)
             openedOriginal = retrieved
             clearFailure()
             bump()
@@ -131,6 +107,39 @@ class RecordsController(
             openedOriginal = null
             reportFailure("reopen original $documentId", error)
             null
+        }
+    }
+
+    internal fun readOriginal(documentId: String): RetrievedOriginal {
+        val document = plan.document(documentId) ?: error("Unknown document: $documentId")
+        return when (val content = document.original.content) {
+            is OriginalContent.Text -> RetrievedOriginal(
+                documentId = document.id,
+                fileName = document.original.fileName,
+                mediaType = document.original.mediaType,
+                storageKey = null,
+                byteSize = content.value.encodeToByteArray().size,
+                isPdf = false,
+                textPreview = content.value,
+            )
+            is OriginalContent.StoredFile -> {
+                val bytes = files.readBytes(content.storageKey)
+                    ?: error("Stored original is missing for key ${content.storageKey}")
+                require(document.original.mediaType != "application/pdf" || bytes.isPdfHeader()) {
+                    "Stored original for ${content.storageKey} is not a PDF (${bytes.size} bytes)."
+                }
+                RetrievedOriginal(
+                    documentId = document.id,
+                    fileName = document.original.fileName,
+                    mediaType = document.original.mediaType,
+                    storageKey = content.storageKey,
+                    byteSize = bytes.size,
+                    isPdf = bytes.isPdfHeader(),
+                    textPreview = bytes.takeUnless { it.isPdfHeader() }
+                        ?.decodeToString(throwOnInvalidSequence = false),
+                    pdfBytes = bytes.takeIf { it.isPdfHeader() },
+                )
+            }
         }
     }
 
@@ -263,7 +272,7 @@ fun rememberRecordsController(plan: CarePlan, saveTask: (Task) -> Unit): Records
     val reviews = rememberDocumentReviewStore()
     return remember(plan, files, reviews, saveTask) {
         val child = plan.people.firstOrNull { it.id == DemoFamily.childId }
-        val pdfBody = DemoFamily.immunizationPdfBody(child?.displayName ?: "Maya", child?.birthDate)
+        val pdfBody = DemoFamily.immunizationPdfBody(child?.displayName ?: DemoFamily.childName, child?.birthDate)
         RecordsController(plan, files, reviews, pdfBody, saveTask)
     }
 }

@@ -66,6 +66,7 @@ import com.runwithfun.familycare.ui.TaskDetailScreen
 import com.runwithfun.familycare.ui.VisitDetailScreen
 import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
 import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
+import com.runwithfun.familycare.ui.assistant.rememberAssistantConversation
 import com.runwithfun.familycare.ui.home.HomeScreen
 import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
@@ -125,10 +126,11 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
     val plan = remember(profile.childName, profile.birthDate) {
         DemoFamily.createPlan(profile.childName, profile.birthDate)
     }
-    val assistant = rememberAssistantActions(plan)
     val growingNotes = rememberGrowingNotes(plan)
     val session = rememberCareSession(plan)
     val records = rememberRecordsController(plan, saveTask = session::saveTask)
+    val assistant = rememberAssistantActions(session)
+    val conversation = rememberAssistantConversation(session, records)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
     var tabName by rememberSaveable { mutableStateOf(AppTab.HOME.name) }
@@ -298,6 +300,7 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                         }
                         AppTab.ASSISTANT -> LocalAssistantScreen(
                             actions = assistant,
+                            conversation = conversation,
                             onSaved = {
                                 session.notifyChanged()
                                 day = assistant.task.date
@@ -307,6 +310,9 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                                 day = assistant.visitDate ?: DemoFamily.today
                                 tabName = AppTab.HOME.name
                                 detail = HomeDetail.Calendar
+                            },
+                            onOpenTask = { task ->
+                                detail = HomeDetail.TaskEditor(task.id, task.date, fromCalendar = false)
                             },
                         )
                     }

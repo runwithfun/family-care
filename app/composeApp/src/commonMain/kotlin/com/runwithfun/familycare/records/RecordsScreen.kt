@@ -345,29 +345,6 @@ private fun ExtractedPanel(
                 isUntouched = field.isUntouched(),
                 shown = field.shownValue(),
             )
-            if (field.label == DemoFamily.immunizationAField) {
-                val snapshot = records.recordedDoseSnapshot(
-                    document.id,
-                    DemoFamily.immunizationAName,
-                )
-                if (snapshot != null) {
-                    val reviewed = field.review?.value
-                    Text(
-                        buildString {
-                            append("Recorded dose (source snapshot): ")
-                            append(snapshot.dateAdministered)
-                            if (reviewed != null && reviewed != snapshot.dateAdministered.toString()) {
-                                append(
-                                    " — document review is $reviewed; the recorded dose stays as its own snapshot.",
-                                )
-                            } else {
-                                append(" — field corrections do not rewrite this recorded dose.")
-                            }
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
         }
     }
 }

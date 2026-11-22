@@ -16,7 +16,6 @@ import com.runwithfun.familycare.domain.FieldReview
 import com.runwithfun.familycare.domain.GrowingObservation
 import com.runwithfun.familycare.domain.ImmunizationReference
 import com.runwithfun.familycare.domain.OriginalContent
-import com.runwithfun.familycare.domain.RecordedImmunization
 import com.runwithfun.familycare.domain.ReviewedActivity
 import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
@@ -26,37 +25,53 @@ object DemoFamily {
     const val motherId = "demo-mother"
     const val childId = "demo-child"
     const val childVisitId = "demo-child-visit"
+    const val childName = "Maya"
+    const val motherName = "Aoife"
+    const val clinicName = "Alderfen Family Clinic"
+    val childBirthDate = CareDate(2026, 9, 28)
     val today = CareDate(2026, 11, 23)
 
     private const val recoveryVisitId = "demo-recovery-visit"
+    val recoveryVisitDate = today
+    val recoveryNoteDate = CareDate(2026, 11, 20)
     const val recoveryDocumentId = "demo-recovery-note"
     const val immunizationDocumentId = "demo-immunizations"
-    const val immunizationPdfStorageKey = "documents/demo-immunizations.pdf"
-    const val immunizationAField = "Example immunization A date"
-    const val immunizationBField = "Example immunization B date"
-    const val immunizationAName = "Example immunization A"
-    val immunizationDate = CareDate(2026, 11, 2)
+    // Earlier demo builds stored a different fictional PDF under the same display name.
+    const val immunizationPdfStorageKey = "documents/demo-immunizations-extract-v2.pdf"
+    const val immunizationDocumentDateField = "Document date (copy issued)"
+    const val administrationDateField = "Administration date"
+    val immunizationDocumentDate = CareDate(2026, 11, 19)
+    val immunizationDocumentDateExcerpt = "Copy issued: $immunizationDocumentDate"
 
-    /** Readable recovery note for Assistant (#7). Kept as on-device text. */
-    const val recoveryNoteText =
-        "Fictional clinic note for demonstration. Follow-up booked at 14:30. " +
+    const val recoveryObservation = "Aoife reports some soreness after longer walks."
+    const val recoveryRescheduleExcerpt = "Follow-up moved from November 20 to November 23, 2026 at 14:30."
+
+    /** Fictional original shared by Records and Assistant. */
+    val recoveryNoteText =
+        "$clinicName · Postpartum follow-up\n" +
+            "Patient: $motherName\n" +
+            "Note date: $recoveryNoteDate · Fictional demo record\n\n" +
+            "$recoveryRescheduleExcerpt\n" +
+            "$recoveryObservation\n" +
             "Bring any questions about your recovery."
 
+    const val missingImmunizationExcerpt = "Administration date: not recorded on this copy."
+    const val noVaccinationEntriesExcerpt = "No vaccination entries are included in this copy."
+
     fun immunizationPdfBody(
-        childName: String = "Maya",
-        birthDate: CareDate? = CareDate(2026, 9, 28),
+        childName: String = DemoFamily.childName,
+        birthDate: CareDate? = childBirthDate,
     ): String =
         """
-        Example Family Clinic — Immunization record (synthetic demo PDF)
+        $clinicName — Immunization record extract
+        Fictional demo record
         Patient: $childName
         Date of birth: ${birthDate ?: "Not provided"}
-        Immunization dates below are fixed demo values.
+        $immunizationDocumentDateExcerpt
 
-        Documented doses on this copy:
-        Example immunization A: $immunizationDate
-
-        Example immunization B: not listed on this copy.
-        Contact the clinic for a complete record before assuming any missing dose status.
+        Vaccine name: not recorded on this copy.
+        $missingImmunizationExcerpt
+        $noVaccinationEntriesExcerpt
         """.trimIndent()
 
     val newbornObservation = GrowingObservation(
@@ -67,11 +82,11 @@ object DemoFamily {
         recordedOn = CareDate(2026, 10, 20),
     )
 
-    val infantObservation = GrowingObservation(
+    val rattleObservation = GrowingObservation(
         id = "demo-obs-infant-reach",
         personId = childId,
-        stage = AgeStage.INFANT_2_4_MONTHS,
-        note = "Reaches toward a soft rattle held nearby.",
+        stage = AgeStage.NEWBORN_0_2_MONTHS,
+        note = "Watched a soft rattle move from side to side.",
         recordedOn = CareDate(2026, 11, 18),
         forVisitId = childVisitId,
     )
@@ -119,11 +134,11 @@ object DemoFamily {
     )
 
     fun createPlan(
-        childName: String = "Maya",
-        birthDate: CareDate? = CareDate(2026, 9, 28),
+        childName: String = DemoFamily.childName,
+        birthDate: CareDate? = childBirthDate,
     ): CarePlan = CarePlan(
         people = listOf(
-            FamilyMember(motherId, "Aoife", FamilyRole.MOTHER),
+            FamilyMember(motherId, motherName, FamilyRole.MOTHER),
             FamilyMember(childId, childName, FamilyRole.CHILD, birthDate = birthDate),
         ),
         events = listOf(
@@ -133,16 +148,16 @@ object DemoFamily {
                 title = "Well-baby visit",
                 date = today,
                 time = CareTime(9, 30),
-                provider = "Example Family Clinic",
+                provider = clinicName,
                 status = VisitStatus.BOOKED,
             ),
             Visit(
                 id = recoveryVisitId,
                 personId = motherId,
                 title = "Recovery follow-up",
-                date = today,
+                date = recoveryVisitDate,
                 time = CareTime(14, 30),
-                provider = "Example Family Clinic",
+                provider = clinicName,
                 status = VisitStatus.BOOKED,
                 sourceDocumentId = recoveryDocumentId,
             ),
@@ -167,7 +182,7 @@ object DemoFamily {
                 fields = listOf(
                     DocumentField(
                         label = "Follow-up time",
-                        proposal = ExtractedValue("14:30", "Follow-up booked at 14:30."),
+                        proposal = ExtractedValue("14:30", recoveryRescheduleExcerpt),
                         review = FieldReview("14:30"),
                     ),
                     DocumentField(label = "Clinician name"),
@@ -184,24 +199,19 @@ object DemoFamily {
                 ),
                 fields = listOf(
                     DocumentField(
-                        label = immunizationAField,
+                        label = immunizationDocumentDateField,
                         proposal = ExtractedValue(
-                            immunizationDate.toString(),
-                            "Example immunization A: $immunizationDate",
+                            immunizationDocumentDate.toString(),
+                            immunizationDocumentDateExcerpt,
+                            page = 1,
                         ),
                     ),
-                    DocumentField(label = immunizationBField),
+                    DocumentField(label = administrationDateField),
+                    DocumentField(label = "Vaccine name"),
                 ),
             ),
         ),
-        recordedImmunizations = listOf(
-            RecordedImmunization(
-                personId = childId,
-                name = immunizationAName,
-                dateAdministered = immunizationDate,
-                sourceDocumentId = immunizationDocumentId,
-            ),
-        ),
+        recordedImmunizations = emptyList(),
         immunizationReferences = listOf(
             ImmunizationReference(
                 "US",
@@ -214,6 +224,6 @@ object DemoFamily {
                 "https://www2.hse.ie/babies-children/vaccines-your-child/",
             ),
         ),
-        observations = listOf(newbornObservation, infantObservation),
+        observations = listOf(newbornObservation, rattleObservation),
     )
 }

@@ -52,8 +52,8 @@ data class ChildProfileDraft(
 
 @Composable
 fun rememberChildProfileDraft(
-    initialName: String = "Maya",
-    initialBirthDate: CareDate? = CareDate(2026, 9, 28),
+    initialName: String = DemoFamily.childName,
+    initialBirthDate: CareDate? = DemoFamily.childBirthDate,
     initialNotes: String = "",
     initialPhoto: ByteArray? = null,
 ): ChildProfileDraftState {
