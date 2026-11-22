@@ -28,8 +28,6 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/wrapper-validation@v4
-      - name: Install Android SDK 35
-        run: sdkmanager 'platforms;android-35'
       - name: Run shared tests and build the Android demo
         working-directory: app
         run: ./gradlew --no-daemon --max-workers=2 :composeApp:desktopTest :composeApp:assembleDebug
