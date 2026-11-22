@@ -26,7 +26,7 @@ object DemoFamily {
     const val childId = "demo-child"
     const val childVisitId = "demo-child-visit"
     const val childName = "Maya"
-    const val motherName = "Aoife"
+    const val motherName = "Eva"
     const val clinicName = "Alderfen Family Clinic"
     val childBirthDate = CareDate(2026, 9, 28)
     val today = CareDate(2026, 11, 23)
@@ -43,7 +43,7 @@ object DemoFamily {
     val immunizationDocumentDate = CareDate(2026, 11, 19)
     val immunizationDocumentDateExcerpt = "Copy issued: $immunizationDocumentDate"
 
-    const val recoveryObservation = "Aoife reports some soreness after longer walks."
+    const val recoveryObservation = "$motherName reports some soreness after longer walks."
     const val recoveryRescheduleExcerpt = "Follow-up moved from November 20 to November 23, 2026 at 14:30."
 
     /** Fictional original shared by Records and Assistant. */
