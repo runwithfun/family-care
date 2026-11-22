@@ -61,6 +61,8 @@ internal fun FamilyCareTheme(content: @Composable () -> Unit) {
     val defaults = Typography()
     val type = defaults.copy(
         displaySmall = defaults.displaySmall.copy(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 40.sp),
+        headlineLarge = defaults.headlineLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold),
+        headlineMedium = defaults.headlineMedium.copy(fontFamily = display, fontWeight = FontWeight.Bold),
         headlineSmall = defaults.headlineSmall.copy(fontFamily = display, fontWeight = FontWeight.Bold),
         titleLarge = defaults.titleLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold),
         titleMedium = defaults.titleMedium.copy(fontFamily = body, fontWeight = FontWeight.SemiBold),

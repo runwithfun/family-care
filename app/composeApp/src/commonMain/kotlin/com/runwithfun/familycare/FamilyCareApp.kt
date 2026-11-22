@@ -40,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
@@ -122,9 +124,27 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (val page = detail) {
                     HomeDetail.Profile -> Page("Profile", onBack = { detail = null }) {
-                        ProfileAvatar(photo = photo)
-                        Text(child.displayName, style = MaterialTheme.typography.displaySmall)
-                        child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
+                        val colors = MaterialTheme.colorScheme
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = colors.surfaceVariant,
+                            shape = RoundedCornerShape(28.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                ProfileAvatar(photo = photo, modifier = Modifier.size(112.dp))
+                                Text(
+                                    child.displayName,
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    textAlign = TextAlign.Center,
+                                )
+                                val age = child.birthDate?.let { childAge(it, DemoFamily.today) }
+                                if (age != null) Text(age, color = colors.onSurfaceVariant)
+                            }
+                        }
                     }
                     HomeDetail.Calendar -> Page("Calendar", onBack = { detail = null }) {
                         Text(day.monthAndDay(), style = MaterialTheme.typography.titleMedium)
@@ -216,7 +236,7 @@ private fun Page(
                 Text("Back")
             }
         }
-        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Text(title, modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
         content()
     }
 }
