@@ -60,21 +60,28 @@ internal expect fun rememberFamilyProfileStore(): FamilyProfileStore
 
 private fun encodeProfile(profile: FamilyProfile): String = buildString {
     append(Base64.encode(profile.childName.encodeToByteArray()))
-    append('\n')
+    append(':')
     profile.photoBytes?.let { append(Base64.encode(it)) }
 }
 
 private fun decodeProfile(encoded: String): FamilyProfile {
-    val separator = encoded.indexOf('\n')
+    val currentSeparator = encoded.indexOf(':')
+    val separator = if (currentSeparator >= 0) currentSeparator else encoded.indexOf('\n')
     require(separator >= 0) { "The stored profile record is missing its separator." }
     val name = Base64.decode(encoded.substring(0, separator)).decodeToString(throwOnInvalidSequence = true)
     require(name.isNotBlank()) { "The stored profile name is empty." }
 
     val photoStart = separator + 1
-    val photoLength = encoded.length - photoStart
+    // Android's preference serializer can indent the legacy value after its trailing newline.
+    val photoEnd = if (currentSeparator >= 0) {
+        encoded.length
+    } else {
+        maxOf(photoStart, encoded.indexOfLast { !it.isWhitespace() } + 1)
+    }
+    val photoLength = photoEnd - photoStart
     val maxEncodedPhotoLength = (MaxOnboardingPhotoBytes + 2) / 3 * 4
     require(photoLength <= maxEncodedPhotoLength) { "The stored profile photo is too large: $photoLength characters" }
-    val photo = if (photoLength == 0) null else Base64.decode(encoded.substring(photoStart))
+    val photo = if (photoLength == 0) null else Base64.decode(encoded.substring(photoStart, photoEnd))
     require(photo == null || photo.size in 1..MaxOnboardingPhotoBytes) { "The stored profile photo size is invalid." }
     return FamilyProfile(name, photo)
 }
