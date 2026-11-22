@@ -34,6 +34,7 @@ import com.runwithfun.familycare.domain.DocumentKind
 import com.runwithfun.familycare.domain.FamilyMember
 import com.runwithfun.familycare.domain.FamilyRole
 import com.runwithfun.familycare.domain.Task
+import com.runwithfun.familycare.domain.TaskStatus
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.domain.hasGaps
 import com.runwithfun.familycare.domain.isComplete
@@ -263,9 +264,11 @@ private fun DocumentDetail(
             ) {
                 Text("Provider follow-up", style = MaterialTheme.typography.titleMedium)
                 Text(message, style = MaterialTheme.typography.bodyMedium)
-                val linked = records.linkExistingProviderRequest(current.id)
+                val linked = records.providerRequest(current.id)
                 if (linked != null) {
-                    TextButton(onClick = { onOpenTask(linked) }) { Text("View provider request") }
+                    TextButton(onClick = { onOpenTask(linked) }) {
+                        Text(if (linked.status == TaskStatus.DONE) "View completed request" else "View provider request")
+                    }
                 } else {
                     OutlinedButton(onClick = { records.ensureProviderRequest(current.id)?.let(onOpenTask) }) {
                         Text("Add provider request")

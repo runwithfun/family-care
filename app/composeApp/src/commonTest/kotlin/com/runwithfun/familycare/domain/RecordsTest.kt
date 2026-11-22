@@ -198,8 +198,24 @@ class RecordsTest {
 
         val store = InMemoryRecordsLocalStore()
         val records = RecordsController(plan, DocumentFileStore(store), DocumentReviewStore(store))
-        assertEquals(existing.id, records.linkExistingProviderRequest(DemoFamily.immunizationDocumentId)?.id)
+        assertEquals(existing.id, records.providerRequest(DemoFamily.immunizationDocumentId)?.id)
         assertEquals(existing.id, records.ensureProviderRequest(DemoFamily.immunizationDocumentId)?.id)
+    }
+
+    @Test
+    fun textReviewsSurviveDelimitersAndLegacyMissingRows() {
+        val documentId = DemoFamily.recoveryDocumentId
+        val store = InMemoryRecordsLocalStore(
+            mapOf(DocumentReviewStore.ReviewsKey to "$documentId\tFollow-up time\t__MISSING__"),
+        )
+        val first = RecordsController(DemoFamily.createPlan(), DocumentFileStore(store), DocumentReviewStore(store))
+        val corrected = "__MISSING__\tCafé"
+        assertTrue(first.saveCorrection(documentId, "Clinician name", corrected))
+
+        val reopened = RecordsController(DemoFamily.createPlan(), DocumentFileStore(store), DocumentReviewStore(store))
+        val fields = assertNotNull(reopened.document(documentId)).fields
+        assertEquals(corrected, fields.single { it.label == "Clinician name" }.review?.value)
+        assertTrue(fields.single { it.label == "Follow-up time" }.isExplicitlyUnresolved())
     }
 
     @Test

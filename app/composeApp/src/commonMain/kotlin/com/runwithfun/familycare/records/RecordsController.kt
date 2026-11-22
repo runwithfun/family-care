@@ -168,17 +168,15 @@ class RecordsController(
         return plan.openTasksForDocument(documentId)
     }
 
-    /** Links the existing open provider request without creating a duplicate. */
-    fun linkExistingProviderRequest(documentId: String): Task? {
+    fun providerRequest(documentId: String): Task? {
         revision
         return plan.openTasksForDocument(documentId).firstOrNull()
+            ?: (plan.event("request-$documentId") as? Task)
     }
 
     fun ensureProviderRequest(documentId: String): Task? {
-        val existing = plan.openTasksForDocument(documentId).firstOrNull()
-        if (existing != null) return existing
+        providerRequest(documentId)?.let { return it }
         val taskId = "request-$documentId"
-        (plan.event(taskId) as? Task)?.let { return it }
         return try {
             val document = plan.document(documentId) ?: error("Unknown document: $documentId")
             val request = Task(

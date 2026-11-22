@@ -44,22 +44,30 @@ class DocumentFileStore(private val store: RecordsLocalStore) {
     private fun fileKey(storageKey: String) = "familycare.records.file.$storageKey"
 }
 
+@OptIn(ExperimentalEncodingApi::class)
 class DocumentReviewStore(private val store: RecordsLocalStore) {
     fun loadAll(): Map<ReviewKey, String?> = decode(store.read(ReviewsKey))
 
-    private fun decode(payload: String?): Map<ReviewKey, String?> =
-        payload.orEmpty().lineSequence()
+    private fun decode(payload: String?): Map<ReviewKey, String?> {
+        val encoded = payload.orEmpty()
+        val versioned = encoded.startsWith(VersionHeader)
+        return encoded.removePrefix(VersionHeader).lineSequence()
             .filter { it.isNotBlank() }
             .mapNotNull { line ->
                 val parts = line.split('\t')
                 if (parts.size != 3) return@mapNotNull null
                 val value = when (parts[2]) {
                     MISSING -> null
-                    else -> parts[2]
+                    else -> if (versioned) {
+                        Base64.decode(parts[2]).decodeToString(throwOnInvalidSequence = true)
+                    } else {
+                        parts[2]
+                    }
                 }
                 ReviewKey(parts[0], parts[1]) to value
             }
             .toMap()
+    }
 
     internal fun save(documentId: String, fieldLabel: String, value: String?, publish: () -> Unit) {
         val previous = store.read(ReviewsKey)
@@ -72,7 +80,7 @@ class DocumentReviewStore(private val store: RecordsLocalStore) {
             try {
                 store.write(ReviewsKey, previous)
             } catch (rollbackError: Exception) {
-                failure.addSuppressed(rollbackError)
+                if (failure !== rollbackError) failure.addSuppressed(rollbackError)
             }
             throw failure
         }
@@ -82,16 +90,17 @@ class DocumentReviewStore(private val store: RecordsLocalStore) {
         val encoded = values.entries
             .sortedWith(compareBy({ it.key.documentId }, { it.key.fieldLabel }))
             .joinToString("\n") { (key, value) ->
-                val encodedValue = value ?: MISSING
+                val encodedValue = value?.let { Base64.encode(it.encodeToByteArray()) } ?: MISSING
                 "${key.documentId}\t${key.fieldLabel}\t$encodedValue"
             }
-        store.write(ReviewsKey, encoded.ifEmpty { null })
+        store.write(ReviewsKey, if (encoded.isEmpty()) null else VersionHeader + encoded)
     }
 
     data class ReviewKey(val documentId: String, val fieldLabel: String)
 
     companion object {
         const val ReviewsKey = "familycare.records.reviews"
+        private const val VersionHeader = "v2\n"
         private const val MISSING = "__MISSING__"
     }
 }
