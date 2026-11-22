@@ -5,12 +5,14 @@ import com.runwithfun.familycare.records.DocumentFileStore
 import com.runwithfun.familycare.records.DocumentReviewStore
 import com.runwithfun.familycare.records.InMemoryRecordsLocalStore
 import com.runwithfun.familycare.records.RecordsController
+import com.runwithfun.familycare.records.RecordsLocalStore
 import com.runwithfun.familycare.records.buildSyntheticClinicPdf
 import com.runwithfun.familycare.records.containsLatin1
 import com.runwithfun.familycare.records.isPdfHeader
 import com.runwithfun.familycare.records.validateReviewInput
 import com.runwithfun.familycare.records.FieldValidationResult
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -37,6 +39,8 @@ class RecordsTest {
         val opened = records.reopenOriginal(DemoFamily.immunizationDocumentId)
         assertNotNull(opened)
         assertTrue(opened.isPdf)
+        assertContentEquals(bytes, opened.pdfBytes)
+        assertNull(opened.textPreview)
         assertEquals("demo-immunizations.pdf", opened.fileName)
         assertEquals(DemoFamily.immunizationPdfStorageKey, opened.storageKey)
         assertEquals("application/pdf", plan.document(DemoFamily.immunizationDocumentId)!!.original.mediaType)
@@ -44,6 +48,13 @@ class RecordsTest {
         val recovery = plan.document(DemoFamily.recoveryDocumentId)!!
         assertTrue(recovery.original.content is OriginalContent.Text)
         assertEquals(DemoFamily.recoveryNoteText, recovery.originalText())
+    }
+
+    @Test
+    fun pdfCrossReferenceUsesByteOffsets() {
+        val bytes = buildSyntheticClinicPdf("Nóra")
+        val xrefOffset = bytes.decodeToString().substringAfterLast("startxref\n").lineSequence().first().toInt()
+        assertEquals("xref\n", bytes.decodeToString(xrefOffset, xrefOffset + 5))
     }
 
     @Test
@@ -96,6 +107,39 @@ class RecordsTest {
             .fields.single { it.label == DemoFamily.immunizationAField }
         assertTrue(unresolved.isExplicitlyUnresolved())
         assertFalse(unresolved.isUntouched())
+    }
+
+    @Test
+    fun reviewFailurePreservesSavedAndVisibleReview() {
+        val backing = InMemoryRecordsLocalStore()
+        var failNextWrite = false
+        val store = object : RecordsLocalStore {
+            override fun read(key: String): String? = backing.read(key)
+
+            override fun write(key: String, value: String?) {
+                backing.write(key, value)
+                if (failNextWrite) {
+                    failNextWrite = false
+                    error("Test persistence failed after changing the value")
+                }
+            }
+        }
+        val plan = DemoFamily.createPlan()
+        val records = RecordsController(plan, DocumentFileStore(store), DocumentReviewStore(store))
+        val documentId = DemoFamily.immunizationDocumentId
+        val fieldLabel = DemoFamily.immunizationAField
+        assertTrue(records.saveCorrection(documentId, fieldLabel, "2026-11-02"))
+        val goodSnapshot = backing.snapshot()
+
+        failNextWrite = true
+        assertFalse(records.leaveUnresolved(documentId, fieldLabel))
+        assertEquals("2026-11-02", records.document(documentId)!!.fields.first().review?.value)
+        assertEquals(goodSnapshot, backing.snapshot())
+        assertEquals(1, records.revision)
+
+        assertFalse(records.leaveUnresolved(documentId, "Unknown field"))
+        assertEquals(goodSnapshot, backing.snapshot())
+        assertEquals(1, records.revision)
     }
 
     @Test

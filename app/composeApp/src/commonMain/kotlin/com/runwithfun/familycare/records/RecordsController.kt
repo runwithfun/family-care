@@ -20,12 +20,14 @@ import com.runwithfun.familycare.domain.isUntouched
 import com.runwithfun.familycare.domain.storageKey
 
 data class RetrievedOriginal(
+    val documentId: String,
     val fileName: String,
     val mediaType: String,
     val storageKey: String?,
     val byteSize: Int?,
     val isPdf: Boolean,
     val textPreview: String?,
+    val pdfBytes: ByteArray? = null,
 )
 
 class RecordsController(
@@ -39,6 +41,9 @@ class RecordsController(
 
     /** Full local failure detail for logs and on-device diagnostics. */
     var lastErrorDetail by mutableStateOf<String?>(null)
+        private set
+
+    var errorMessage by mutableStateOf<String?>(null)
         private set
 
     var openedOriginal by mutableStateOf<RetrievedOriginal?>(null)
@@ -88,6 +93,7 @@ class RecordsController(
                 ?: error("Unknown document: $documentId")
             val retrieved = when (val content = document.original.content) {
                 is OriginalContent.Text -> RetrievedOriginal(
+                    documentId = document.id,
                     fileName = document.original.fileName,
                     mediaType = document.original.mediaType,
                     storageKey = null,
@@ -102,24 +108,24 @@ class RecordsController(
                         "Stored original for ${content.storageKey} is not a PDF (${bytes.size} bytes)."
                     }
                     RetrievedOriginal(
+                        documentId = document.id,
                         fileName = document.original.fileName,
                         mediaType = document.original.mediaType,
                         storageKey = content.storageKey,
                         byteSize = bytes.size,
                         isPdf = bytes.isPdfHeader(),
-                        textPreview = if (bytes.isPdfHeader()) {
-                            pdfBodyText.takeIf { bytes.containsLatin1("Example immunization A") }
-                        } else {
-                            bytes.decodeToString(throwOnInvalidSequence = false)
-                        },
+                        textPreview = bytes.takeUnless { it.isPdfHeader() }
+                            ?.decodeToString(throwOnInvalidSequence = false),
+                        pdfBytes = bytes.takeIf { it.isPdfHeader() },
                     )
                 }
             }
             openedOriginal = retrieved
-            lastErrorDetail = null
+            clearFailure()
             bump()
             retrieved
         } catch (error: Exception) {
+            openedOriginal = null
             reportFailure("reopen original $documentId", error)
             null
         }
@@ -128,23 +134,32 @@ class RecordsController(
     fun saveCorrection(documentId: String, fieldLabel: String, rawValue: String): Boolean {
         return when (val validation = validateReviewInput(fieldLabel, rawValue)) {
             is FieldValidationResult.Invalid -> {
+                println(validation.detail)
                 lastErrorDetail = validation.detail
+                errorMessage = when {
+                    "date" in fieldLabel.lowercase() -> "Enter a valid date as YYYY-MM-DD."
+                    "time" in fieldLabel.lowercase() -> "Enter a valid time as HH:MM."
+                    else -> "Enter a value for $fieldLabel."
+                }
                 false
             }
             is FieldValidationResult.Ok -> runLocal("save review $documentId/$fieldLabel") {
-                plan.reviewField(documentId, fieldLabel, FieldReview(validation.value))
-                reviews.save(documentId, fieldLabel, validation.value)
-                bump()
+                saveReview(documentId, fieldLabel, validation.value)
             }
         }
     }
 
     fun leaveUnresolved(documentId: String, fieldLabel: String): Boolean =
         runLocal("leave unresolved $documentId/$fieldLabel") {
-            plan.reviewField(documentId, fieldLabel, FieldReview(null))
-            reviews.save(documentId, fieldLabel, null)
-            bump()
+            saveReview(documentId, fieldLabel, null)
         }
+
+    private fun saveReview(documentId: String, fieldLabel: String, value: String?) {
+        reviews.save(documentId, fieldLabel, value) {
+            plan.reviewField(documentId, fieldLabel, FieldReview(value))
+        }
+        bump()
+    }
 
     fun openRequestTasks(documentId: String): List<Task> {
         revision
@@ -197,7 +212,7 @@ class RecordsController(
                     plan.reviewField(key.documentId, key.fieldLabel, FieldReview(value))
                 }
             }
-            lastErrorDetail = null
+            clearFailure()
         } catch (error: Exception) {
             reportFailure("restore reviews", error)
         }
@@ -210,7 +225,7 @@ class RecordsController(
     private fun runLocal(operation: String, block: () -> Unit): Boolean =
         try {
             block()
-            lastErrorDetail = null
+            clearFailure()
             true
         } catch (error: Exception) {
             reportFailure(operation, error)
@@ -221,6 +236,12 @@ class RecordsController(
         val detail = "Could not $operation.\n${error.stackTraceToString()}"
         println(detail)
         lastErrorDetail = detail
+        errorMessage = "Could not complete this action on this device. Try again."
+    }
+
+    private fun clearFailure() {
+        lastErrorDetail = null
+        errorMessage = null
     }
 }
 

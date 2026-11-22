@@ -61,14 +61,14 @@ fun RecordsScreen(
             style = MaterialTheme.typography.bodyMedium,
         )
 
-        records.lastErrorDetail?.let { detail ->
+        records.errorMessage?.let { message ->
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
                 shape = MaterialTheme.shapes.small,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
-                    detail,
+                    message,
                     modifier = Modifier.padding(12.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer,
@@ -291,24 +291,10 @@ private fun OriginalPanel(
         Button(onClick = { records.reopenOriginal(document.id) }) {
             Text("Open stored original")
         }
-        val opened = records.openedOriginal?.takeIf {
-            it.fileName == document.original.fileName || it.storageKey == document.storageKeyOrNull()
-        }
+        val opened = records.openedOriginal?.takeIf { it.documentId == document.id }
         if (opened != null) {
-            Text(
-                buildString {
-                    append(opened.fileName)
-                    append(" · ")
-                    append(opened.mediaType)
-                    opened.byteSize?.let { append(" · $it bytes") }
-                    if (opened.isPdf) append(" · PDF")
-                    opened.storageKey?.let { append("\nStored key: $it") }
-                },
-                style = MaterialTheme.typography.bodySmall,
-            )
-            opened.textPreview?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium)
-            }
+            opened.pdfBytes?.let { RecordPdfPreview(it, Modifier.fillMaxWidth()) }
+            opened.textPreview?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
         } else {
             Text(
                 "Use Open stored original to retrieve the on-device file.",
@@ -317,9 +303,6 @@ private fun OriginalPanel(
         }
     }
 }
-
-private fun CareDocument.storageKeyOrNull(): String? =
-    (original.content as? com.runwithfun.familycare.domain.OriginalContent.StoredFile)?.storageKey
 
 @Composable
 private fun ExtractedPanel(

@@ -45,9 +45,10 @@ class DocumentFileStore(private val store: RecordsLocalStore) {
 }
 
 class DocumentReviewStore(private val store: RecordsLocalStore) {
-    fun loadAll(): Map<ReviewKey, String?> {
-        val payload = store.read(ReviewsKey) ?: return emptyMap()
-        return payload.lineSequence()
+    fun loadAll(): Map<ReviewKey, String?> = decode(store.read(ReviewsKey))
+
+    private fun decode(payload: String?): Map<ReviewKey, String?> =
+        payload.orEmpty().lineSequence()
             .filter { it.isNotBlank() }
             .mapNotNull { line ->
                 val parts = line.split('\t')
@@ -59,12 +60,22 @@ class DocumentReviewStore(private val store: RecordsLocalStore) {
                 ReviewKey(parts[0], parts[1]) to value
             }
             .toMap()
-    }
 
-    fun save(documentId: String, fieldLabel: String, value: String?) {
-        val next = loadAll().toMutableMap()
+    internal fun save(documentId: String, fieldLabel: String, value: String?, publish: () -> Unit) {
+        val previous = store.read(ReviewsKey)
+        val next = decode(previous).toMutableMap()
         next[ReviewKey(documentId, fieldLabel)] = value
-        persist(next)
+        try {
+            persist(next)
+            publish()
+        } catch (failure: Exception) {
+            try {
+                store.write(ReviewsKey, previous)
+            } catch (rollbackError: Exception) {
+                failure.addSuppressed(rollbackError)
+            }
+            throw failure
+        }
     }
 
     private fun persist(values: Map<ReviewKey, String?>) {
