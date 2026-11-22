@@ -34,6 +34,10 @@ import platform.ImageIO.CGImageSourceCreateWithURL
 import platform.ImageIO.kCGImageSourceCreateThumbnailFromImageAlways
 import platform.ImageIO.kCGImageSourceCreateThumbnailWithTransform
 import platform.ImageIO.kCGImageSourceThumbnailMaxPixelSize
+import platform.Photos.PHAuthorizationStatusAuthorized
+import platform.Photos.PHAuthorizationStatusLimited
+import platform.Photos.PHAuthorizationStatusNotDetermined
+import platform.Photos.PHPhotoLibrary
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
@@ -81,16 +85,41 @@ private class OnboardingPhotoSession(
             onResult(OnboardingPhotoResult.Failed)
             return
         }
-        val config = PHPickerConfiguration().apply {
-            filter = PHPickerFilter.imagesFilter
-            selectionLimit = 1
-        }
-        val picker = PHPickerViewController(configuration = config)
         resultCallback = onResult
-        controller = picker
-        picker.delegate = this
-        picker.modalInPresentation = true
-        presenter.presentViewController(picker, animated = true, completion = null)
+        ensurePhotoAccessThen {
+            if (resultCallback == null) return@ensurePhotoAccessThen
+            val config = PHPickerConfiguration().apply {
+                filter = PHPickerFilter.imagesFilter
+                selectionLimit = 1
+            }
+            val picker = PHPickerViewController(configuration = config)
+            controller = picker
+            picker.delegate = this
+            // Allow interactive dismiss / Cancel so setup is never stuck on "Preparing photo…"
+            picker.modalInPresentation = false
+            presenter.presentViewController(picker, animated = true, completion = null)
+        }
+    }
+
+    private fun ensurePhotoAccessThen(continuePresenting: () -> Unit) {
+        val status = PHPhotoLibrary.authorizationStatus()
+        if (status == PHAuthorizationStatusNotDetermined) {
+            PHPhotoLibrary.requestAuthorization { _ ->
+                dispatch_async(dispatch_get_main_queue()) {
+                    continuePresenting()
+                }
+            }
+            return
+        }
+        // PHPicker works without full library access; Authorized/Limited/Denied all continue.
+        // Denied still gets the system picker limited to selected items after Cancel returns Cancelled.
+        if (status != PHAuthorizationStatusAuthorized &&
+            status != PHAuthorizationStatusLimited &&
+            status != PHAuthorizationStatusNotDetermined
+        ) {
+            // Continue with PHPicker anyway — it does not require library permission.
+        }
+        continuePresenting()
     }
 
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {

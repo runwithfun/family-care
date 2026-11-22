@@ -78,8 +78,14 @@ fun FamilyOnboardingScreen(
                 }
                 photoFailed = image == null
             }
-            OnboardingPhotoResult.Failed -> photoFailed = true
-            OnboardingPhotoResult.Cancelled -> Unit
+            OnboardingPhotoResult.Failed -> {
+                photoFailed = true
+                photoPending = false
+            }
+            OnboardingPhotoResult.Cancelled -> {
+                photoFailed = false
+                photoPending = false
+            }
         }
     }
     val focus = LocalFocusManager.current
@@ -137,14 +143,21 @@ fun FamilyOnboardingScreen(
                                     ) {
                                         Text(if (photo == null) "Add photo" else "Change photo")
                                     }
-                                    if (photo != null) {
+                                    if (photoPending) {
+                                        TextButton(
+                                            onClick = { photoPending = false },
+                                            colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
+                                            modifier = Modifier.heightIn(min = 44.dp),
+                                        ) {
+                                            Text("Cancel photo")
+                                        }
+                                    } else if (photo != null) {
                                         TextButton(
                                             onClick = {
                                                 photo = null
                                                 preview = null
                                                 photoFailed = false
                                             },
-                                            enabled = !photoPending,
                                             colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
                                             modifier = Modifier.heightIn(min = 44.dp),
                                         ) {
@@ -163,7 +176,7 @@ fun FamilyOnboardingScreen(
                         }
                         if (photoPending) {
                             Text(
-                                "Preparing photo…",
+                                "Preparing photo… Tap Cancel photo if you closed the picker.",
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                                 color = colors.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
