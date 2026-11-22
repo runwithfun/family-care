@@ -10,11 +10,11 @@
   <text x="28" y="224" fill="#161616" font-family="Bricolage Grotesque, Georgia, serif" font-size="24" font-weight="650">Today</text>
   <rect x="28" y="250" width="264" height="88" rx="18" fill="#F3D6DE"/>
   <text x="48" y="286" fill="#161616" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="16" font-weight="700">Well-baby visit</text>
-  <text x="48" y="312" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">Maya · 09:30</text>
+  <text x="48" y="312" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">Maya Â· 09:30</text>
   <rect x="28" y="354" width="264" height="88" rx="18" fill="#E8F3F0"/>
   <text x="48" y="390" fill="#161616" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="16" font-weight="700">Recovery follow-up</text>
-  <text x="48" y="416" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">For you · 14:30</text>
+  <text x="48" y="416" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">For you Â· 14:30</text>
   <rect x="28" y="458" width="264" height="88" rx="18" fill="#E8F3F0"/>
   <text x="48" y="494" fill="#161616" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="16" font-weight="700">Request immunization copy</text>
-  <text x="48" y="520" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">Maya · task</text>
+  <text x="48" y="520" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">Maya Â· task</text>
 </svg>

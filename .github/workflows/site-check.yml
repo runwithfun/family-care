@@ -36,3 +36,15 @@ jobs:
           grep -q '/family-care/' dist/index.html
           ! grep -E 'src="/(src|assets)/' dist/index.html
           ! grep -E 'href="/(src|assets)/' dist/index.html
+
+      - name: Validate shipped SVGs
+        working-directory: site
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          for asset in sorted(Path("dist").rglob("*.svg")):
+              print(f"Checking {asset}", flush=True)
+              ElementTree.parse(asset)
+          PY
