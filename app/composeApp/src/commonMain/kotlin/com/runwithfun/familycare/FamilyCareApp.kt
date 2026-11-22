@@ -1,6 +1,7 @@
 package com.runwithfun.familycare
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -45,6 +47,8 @@ import com.runwithfun.familycare.domain.CareEvent
 import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.FamilyRole
 import com.runwithfun.familycare.domain.Visit
+import com.runwithfun.familycare.resources.Res
+import com.runwithfun.familycare.resources.care_intro
 import com.runwithfun.familycare.ui.FamilyCareTheme
 import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
 import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
@@ -53,6 +57,10 @@ import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
 import com.runwithfun.familycare.ui.home.monthAndDay
 import com.runwithfun.familycare.ui.home.statusLabel
+import com.runwithfun.familycare.ui.onboarding.FamilyOnboardingScreen
+import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
+import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfileState
+import org.jetbrains.compose.resources.painterResource
 
 private enum class AppTab(val label: String) {
     HOME("Home"),
@@ -69,7 +77,31 @@ private sealed interface HomeDetail {
 
 @Composable
 fun FamilyCareApp() {
-    val plan = remember { DemoFamily.createPlan() }
+    val family = rememberFamilyProfileState()
+    val profile = family.profile
+    FamilyCareTheme {
+        if (profile == null) {
+            FamilyOnboardingScreen(
+                illustration = {
+                    Image(
+                        painter = painterResource(Res.drawable.care_intro),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(258.dp),
+                    )
+                },
+                saveFailed = family.saveFailed,
+                onComplete = { name, photo -> family.save(name, photo) },
+            )
+        } else {
+            FamilyCareNavigation(profile.childName, profile.photoBytes)
+        }
+    }
+}
+
+@Composable
+private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
+    val photo = rememberFamilyProfilePhoto(photoBytes)
+    val plan = remember(childName) { DemoFamily.createPlan(childName) }
     val assistant = rememberAssistantActions(plan)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
@@ -85,69 +117,67 @@ fun FamilyCareApp() {
         }
     }
 
-    FamilyCareTheme {
-        Surface(modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    when (val page = detail) {
-                        HomeDetail.Profile -> Page("Profile", onBack = { detail = null }) {
-                            ProfileAvatar(photo = null)
-                            Text(child.displayName, style = MaterialTheme.typography.displaySmall)
-                            child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
-                        }
-                        HomeDetail.Calendar -> Page("Calendar", onBack = { detail = null }) {
-                            Text(day.monthAndDay(), style = MaterialTheme.typography.titleMedium)
-                            val events = plan.eventsOn(day)
-                            if (events.isEmpty()) Text("No events saved for this day.")
-                            for (event in events) {
-                                TextButton(onClick = { detail = HomeDetail.Event(event, fromCalendar = true) }) {
-                                    Text(event.title)
-                                }
-                            }
-                        }
-                        is HomeDetail.Event -> EventPage(
-                            event = page.event,
-                            plan = plan,
-                            onBack = { detail = if (page.fromCalendar) HomeDetail.Calendar else null },
-                        )
-                        null -> when (tab) {
-                            AppTab.HOME -> HomeScreen(
-                                child = child,
-                                childName = child.displayName,
-                                photo = null,
-                                today = DemoFamily.today,
-                                selectedDay = day,
-                                people = people,
-                                eventsOn = { plan.eventsOn(it) },
-                                onSelectDay = { day = it },
-                                onOpenProfile = { detail = HomeDetail.Profile },
-                                onOpenCalendar = { detail = HomeDetail.Calendar },
-                                onOpenEvent = { detail = HomeDetail.Event(it) },
-                            )
-                            AppTab.RECORDS -> Page("Records") {
-                                for (document in plan.documents) {
-                                    Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
-                                }
-                            }
-                            AppTab.GROWING_UP -> Page("Growing up") {
-                                Text(child.displayName, style = MaterialTheme.typography.titleMedium)
-                                child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
-                            }
-                            AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
-                                day = assistant.task.date
-                                tab = AppTab.HOME
+    Surface(modifier = Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (val page = detail) {
+                    HomeDetail.Profile -> Page("Profile", onBack = { detail = null }) {
+                        ProfileAvatar(photo = photo)
+                        Text(child.displayName, style = MaterialTheme.typography.displaySmall)
+                        child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
+                    }
+                    HomeDetail.Calendar -> Page("Calendar", onBack = { detail = null }) {
+                        Text(day.monthAndDay(), style = MaterialTheme.typography.titleMedium)
+                        val events = plan.eventsOn(day)
+                        if (events.isEmpty()) Text("No events saved for this day.")
+                        for (event in events) {
+                            TextButton(onClick = { detail = HomeDetail.Event(event, fromCalendar = true) }) {
+                                Text(event.title)
                             }
                         }
                     }
+                    is HomeDetail.Event -> EventPage(
+                        event = page.event,
+                        plan = plan,
+                        onBack = { detail = if (page.fromCalendar) HomeDetail.Calendar else null },
+                    )
+                    null -> when (tab) {
+                        AppTab.HOME -> HomeScreen(
+                            child = child,
+                            childName = child.displayName,
+                            photo = photo,
+                            today = DemoFamily.today,
+                            selectedDay = day,
+                            people = people,
+                            eventsOn = { plan.eventsOn(it) },
+                            onSelectDay = { day = it },
+                            onOpenProfile = { detail = HomeDetail.Profile },
+                            onOpenCalendar = { detail = HomeDetail.Calendar },
+                            onOpenEvent = { detail = HomeDetail.Event(it) },
+                        )
+                        AppTab.RECORDS -> Page("Records") {
+                            for (document in plan.documents) {
+                                Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
+                            }
+                        }
+                        AppTab.GROWING_UP -> Page("Growing up") {
+                            Text(child.displayName, style = MaterialTheme.typography.titleMedium)
+                            child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
+                        }
+                        AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
+                            day = assistant.task.date
+                            tab = AppTab.HOME
+                        }
+                    }
                 }
-                AppNavigation(
-                    current = tab,
-                    onSelect = {
-                        tab = it
-                        detail = null
-                    },
-                )
             }
+            AppNavigation(
+                current = tab,
+                onSelect = {
+                    tab = it
+                    detail = null
+                },
+            )
         }
     }
 }

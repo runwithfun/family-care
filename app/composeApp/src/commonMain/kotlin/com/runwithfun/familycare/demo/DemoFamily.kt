@@ -40,10 +40,10 @@ object DemoFamily {
         ),
     )
 
-    fun createPlan(): CarePlan = CarePlan(
+    fun createPlan(childName: String = "Maya"): CarePlan = CarePlan(
         people = listOf(
             FamilyMember(motherId, "Aoife", FamilyRole.MOTHER),
-            FamilyMember(childId, "Maya", FamilyRole.CHILD, birthDate = CareDate(2026, 9, 28)),
+            FamilyMember(childId, childName, FamilyRole.CHILD, birthDate = CareDate(2026, 9, 28)),
         ),
         events = listOf(
             Visit(
