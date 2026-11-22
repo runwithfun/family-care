@@ -261,8 +261,9 @@ class RecordsController(
 fun rememberRecordsController(plan: CarePlan, saveTask: (Task) -> Unit): RecordsController {
     val files = rememberDocumentFileStore()
     val reviews = rememberDocumentReviewStore()
-    val childName = plan.people.firstOrNull { it.id == DemoFamily.childId }?.displayName ?: "Maya"
-    return remember(plan, files, reviews, childName, saveTask) {
-        RecordsController(plan, files, reviews, DemoFamily.immunizationPdfBody(childName), saveTask)
+    return remember(plan, files, reviews, saveTask) {
+        val child = plan.people.firstOrNull { it.id == DemoFamily.childId }
+        val pdfBody = DemoFamily.immunizationPdfBody(child?.displayName ?: "Maya", child?.birthDate)
+        RecordsController(plan, files, reviews, pdfBody, saveTask)
     }
 }

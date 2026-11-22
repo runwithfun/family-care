@@ -13,6 +13,19 @@ import kotlin.test.assertTrue
 
 class GrowingUpTest {
     @Test
+    fun birthDateSuggestsAStageOnlyWithinTheAvailableAgeRanges() {
+        val today = DemoFamily.today
+
+        assertEquals(AgeStage.NEWBORN_0_2_MONTHS, suggestedAgeStage(today, today))
+        assertEquals(AgeStage.NEWBORN_0_2_MONTHS, suggestedAgeStage(CareDate(2026, 9, 24), today))
+        assertEquals(AgeStage.INFANT_2_4_MONTHS, suggestedAgeStage(CareDate(2026, 9, 23), today))
+        assertEquals(AgeStage.INFANT_2_4_MONTHS, suggestedAgeStage(CareDate(2026, 7, 24), today))
+        assertNull(suggestedAgeStage(CareDate(2026, 7, 23), today))
+        assertNull(suggestedAgeStage(CareDate(2026, 11, 24), today))
+        assertNull(suggestedAgeStage(null, today))
+    }
+
+    @Test
     fun reviewedActivityExportsBothPaperSizes() {
         val activity = DemoFamily.tummyTimeActivity
         val letter = ActivityPdf.render(activity).decodeToString()

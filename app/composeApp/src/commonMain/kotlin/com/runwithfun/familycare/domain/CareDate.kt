@@ -17,6 +17,10 @@ data class CareDate(val year: Int, val month: Int, val day: Int) {
         "${year.toString().padStart(4, '0')}-${month.twoDigits()}-${day.twoDigits()}"
 }
 
+internal fun CareDate.completedMonthsSince(birthDate: CareDate): Int =
+    (year - birthDate.year) * 12 + month - birthDate.month -
+        if (day < birthDate.day) 1 else 0
+
 data class CareTime(val hour: Int, val minute: Int) : Comparable<CareTime> {
     init {
         require(hour in 0..23) { "Hour must be between 0 and 23" }
