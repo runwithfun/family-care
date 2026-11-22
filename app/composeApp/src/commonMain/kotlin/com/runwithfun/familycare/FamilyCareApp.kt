@@ -35,6 +35,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +47,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
+import com.runwithfun.familycare.domain.AgeStage
 import com.runwithfun.familycare.domain.CareEvent
 import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.FamilyRole
@@ -52,6 +55,8 @@ import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.care_intro
 import com.runwithfun.familycare.ui.FamilyCareTheme
+import com.runwithfun.familycare.ui.ActivityPrintScreen
+import com.runwithfun.familycare.ui.GrowingUpScreen
 import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
 import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
 import com.runwithfun.familycare.ui.home.HomeScreen
@@ -107,15 +112,19 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
     val assistant = rememberAssistantActions(plan)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
-    var tab by remember { mutableStateOf(AppTab.HOME) }
+    var tabName by rememberSaveable { mutableStateOf(AppTab.HOME.name) }
+    val tab = AppTab.valueOf(tabName)
+    var activityStageName by rememberSaveable { mutableStateOf<String?>(null) }
+    val growingState = rememberSaveableStateHolder()
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
     var day by remember { mutableStateOf(DemoFamily.today) }
     PlatformBackHandler(enabled = detail != null || tab != AppTab.HOME) {
         val eventPage = detail as? HomeDetail.Event
         when {
+            activityStageName != null -> activityStageName = null
             eventPage?.fromCalendar == true -> detail = HomeDetail.Calendar
             detail != null -> detail = null
-            else -> tab = AppTab.HOME
+            else -> tabName = AppTab.HOME.name
         }
     }
 
@@ -180,13 +189,19 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                                 Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
                             }
                         }
-                        AppTab.GROWING_UP -> Page("Growing up") {
-                            Text(child.displayName, style = MaterialTheme.typography.titleMedium)
-                            child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
+                        AppTab.GROWING_UP -> {
+                            val printableStage = activityStageName?.let(AgeStage::valueOf)
+                            if (printableStage == null) {
+                                growingState.SaveableStateProvider("growing-up") {
+                                    GrowingUpScreen(plan = plan, onOpenActivity = { activityStageName = it.name })
+                                }
+                            } else {
+                                ActivityPrintScreen(printableStage, child.displayName) { activityStageName = null }
+                            }
                         }
                         AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
                             day = assistant.task.date
-                            tab = AppTab.HOME
+                            tabName = AppTab.HOME.name
                         }
                     }
                 }
@@ -194,7 +209,8 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
             AppNavigation(
                 current = tab,
                 onSelect = {
-                    tab = it
+                    if (tab != it) activityStageName = null
+                    tabName = it.name
                     detail = null
                 },
             )

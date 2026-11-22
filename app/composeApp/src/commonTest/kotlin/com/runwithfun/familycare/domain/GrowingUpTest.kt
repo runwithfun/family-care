@@ -1,9 +1,9 @@
 package com.runwithfun.familycare.domain
 
 import com.runwithfun.familycare.demo.DemoFamily
+import com.runwithfun.familycare.growing.ActivityPaper
 import com.runwithfun.familycare.growing.ActivityPdf
 import com.runwithfun.familycare.growing.GrowingUpActions
-import com.runwithfun.familycare.growing.saveLocalPdf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -70,16 +70,14 @@ class GrowingUpTest {
     @Test
     fun reviewedActivityExportsReadablePdf() {
         val activity = DemoFamily.tummyTimeActivity
-        val bytes = ActivityPdf.render(activity, "Maya")
+        val bytes = ActivityPdf.render(activity)
         val text = bytes.decodeToString()
 
         assertTrue(text.startsWith("%PDF-1.4"))
         assertTrue(text.contains("Supervised tummy time"))
-        assertTrue(text.contains("For Maya"))
+        assertTrue(text.contains("/MediaBox [0 0 612 792]"))
+        assertTrue(ActivityPdf.render(activity, ActivityPaper.A4).decodeToString().contains("/MediaBox [0 0 595 842]"))
         assertTrue(text.contains("%%EOF"))
 
-        val path = saveLocalPdf(ActivityPdf.fileName(activity), bytes)
-        assertTrue(path.endsWith(".pdf"))
-        assertTrue(path.contains(activity.id))
     }
 }
