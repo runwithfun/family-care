@@ -37,10 +37,26 @@ class CarePlan(
         }
     }
 
+    fun event(id: String): CareEvent? = eventsById.load()[id]
+
     fun eventsOn(date: CareDate, personId: String? = null): List<CareEvent> =
         eventsById.load().values
             .filter { it.date == date && (personId == null || it.personId == personId) }
             .sortedWith(compareBy<CareEvent> { it.time == null }.thenBy { it.time }.thenBy { it.id })
+
+    fun eventsInMonth(year: Int, month: Int, personId: String? = null): List<CareEvent> =
+        eventsById.load().values
+            .filter {
+                it.date.year == year &&
+                    it.date.month == month &&
+                    (personId == null || it.personId == personId)
+            }
+            .sortedWith(
+                compareBy<CareEvent> { it.date.day }
+                    .thenBy { it.time == null }
+                    .thenBy { it.time }
+                    .thenBy { it.id },
+            )
 
     fun addEvent(event: CareEvent) {
         while (true) {
@@ -52,6 +68,25 @@ class CarePlan(
             }
             validateEvent(event, current)
             if (eventsById.compareAndSet(current, current + (event.id to event))) return
+        }
+    }
+
+    // Replaces an existing event under the same ID. Same details is a no-op so retries stay safe.
+    fun updateEvent(event: CareEvent) {
+        while (true) {
+            val current = eventsById.load()
+            val previous = current[event.id]
+                ?: throw IllegalArgumentException("Unknown event: ${event.id}")
+            if (previous == event) return
+            require(previous::class == event::class) {
+                "Event kind cannot change for ${event.id}"
+            }
+            require(previous.personId == event.personId) {
+                "Event owner cannot change for ${event.id}"
+            }
+            val next = current + (event.id to event)
+            validateEvent(event, next)
+            if (eventsById.compareAndSet(current, next)) return
         }
     }
 
