@@ -71,6 +71,7 @@ fun CalendarScreen(
     onOpenTask: (String) -> Unit,
     onAddPlanItem: (CareDate) -> Unit,
     onBackHome: () -> Unit,
+    focusedVisitId: String? = null,
 ) {
     var visibleYear by remember(selected.year, selected.month) { mutableStateOf(selected.year) }
     var visibleMonth by remember(selected.year, selected.month) { mutableStateOf(selected.month) }
@@ -79,6 +80,9 @@ fun CalendarScreen(
     val dayEvents = session.eventsOn(selected)
     val people = session.people.associateBy { it.id }
     val colors = MaterialTheme.colorScheme
+    val selectedLabel = selected.calendarLabel()
+    val visitCount = dayEvents.count { it is Visit }
+    val reminderCount = dayEvents.size - visitCount
 
     val changeMonth: (Int) -> Unit = { delta ->
         val (year, month) = CareCalendar.shiftMonth(visibleYear, visibleMonth, delta)
@@ -104,6 +108,38 @@ fun CalendarScreen(
                 modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineSmall,
             )
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .semantics {
+                    contentDescription = "Selected day $selectedLabel"
+                },
+            shape = RoundedCornerShape(18.dp),
+            color = colors.primaryContainer,
+            contentColor = colors.onPrimaryContainer,
+            border = BorderStroke(1.dp, colors.outline.copy(alpha = 0.35f)),
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Selected day", style = MaterialTheme.typography.labelLarge)
+                Text(selectedLabel, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    when {
+                        dayEvents.isEmpty() -> "No visits or reminders yet"
+                        else -> buildString {
+                            if (visitCount > 0) append("$visitCount ${if (visitCount == 1) "visit" else "visits"}")
+                            if (visitCount > 0 && reminderCount > 0) append(" · ")
+                            if (reminderCount > 0) {
+                                append("$reminderCount ${if (reminderCount == 1) "reminder" else "reminders"}")
+                            }
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onPrimaryContainer.copy(alpha = 0.8f),
+                )
+            }
         }
 
         Surface(
@@ -183,12 +219,12 @@ fun CalendarScreen(
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (selected == today) "Today" else "Daily plan",
+                        if (selected == today) "Today’s plan" else "Day plan",
                         modifier = Modifier.semantics { heading() },
                         style = MaterialTheme.typography.titleLarge,
                     )
                     Text(
-                        selected.calendarLabel(),
+                        selectedLabel,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
                     )
@@ -205,7 +241,7 @@ fun CalendarScreen(
                     contentColor = colors.onSurfaceVariant,
                 ) {
                     Text(
-                        "No visits or reminders on this day.",
+                        "No visits or reminders on this day. Pick another date above, or add a plan item.",
                         modifier = Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodyMedium,
                     )
@@ -215,9 +251,11 @@ fun CalendarScreen(
                 dayEvents.forEachIndexed { index, event ->
                     if (index > 0) HorizontalDivider(color = colors.outlineVariant)
                     val person = people.getValue(event.personId)
+                    val owner = if (person.role == FamilyRole.MOTHER) "For you" else person.displayName
                     CalendarEventRow(
                         event = event,
-                        owner = if (person.role == FamilyRole.MOTHER) "For you" else person.displayName,
+                        owner = owner,
+                        isFocused = event.id == focusedVisitId,
                         onClick = {
                             when (event) {
                                 is Visit -> onOpenVisit(event.id)
@@ -272,9 +310,12 @@ private fun MonthDayCell(
             .heightIn(min = 48.dp)
             .selectable(selected = isSelected, onClick = onClick, role = Role.Button)
             .clearAndSetSemantics {
-                contentDescription = "${date.calendarLabel()}, ${date.year}, $count " +
-                    if (count == 1) "event" else "events"
-                if (isToday) stateDescription = "Today"
+                contentDescription = buildString {
+                    append("${date.calendarLabel()}, ${date.year}, $count ")
+                    append(if (count == 1) "event" else "events")
+                    if (isToday) append(", Today")
+                    if (isSelected) append(", Selected")
+                }
                 selected = isSelected
                 role = Role.Button
                 semanticsOnClick {
@@ -286,11 +327,21 @@ private fun MonthDayCell(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Surface(
-            modifier = Modifier.sizeIn(minWidth = 34.dp, minHeight = 34.dp),
+            modifier = Modifier.sizeIn(minWidth = 36.dp, minHeight = 36.dp),
             shape = CircleShape,
-            color = if (isSelected) colors.primaryContainer else colors.surface,
-            contentColor = if (isSelected) colors.onPrimaryContainer else colors.onSurface,
-            border = if (isToday) BorderStroke(1.5.dp, colors.outline) else null,
+            color = when {
+                isSelected -> colors.primary
+                else -> colors.surface
+            },
+            contentColor = when {
+                isSelected -> colors.onPrimary
+                else -> colors.onSurface
+            },
+            border = when {
+                isSelected -> null
+                isToday -> BorderStroke(1.5.dp, colors.outline)
+                else -> null
+            },
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(date.day.toString(), style = MaterialTheme.typography.labelLarge)
@@ -298,7 +349,7 @@ private fun MonthDayCell(
         }
         val dotColor = when {
             count == 0 -> Color.Transparent
-            isSelected -> colors.onSurface
+            isSelected -> colors.primary
             else -> colors.secondary
         }
         Spacer(Modifier.size(4.dp).background(dotColor, CircleShape))
@@ -306,25 +357,72 @@ private fun MonthDayCell(
 }
 
 @Composable
-private fun CalendarEventRow(event: CareEvent, owner: String, onClick: () -> Unit) {
+private fun CalendarEventRow(
+    event: CareEvent,
+    owner: String,
+    isFocused: Boolean,
+    onClick: () -> Unit,
+) {
     val colors = MaterialTheme.colorScheme
-    val state = when (event) {
-        is Visit -> "${prettyStatus(event.status.name)} visit"
-        is Task -> if (event.status == TaskStatus.DONE) "Completed reminder" else "Open reminder"
+    val kind = when (event) {
+        is Visit -> "Visit"
+        is Task -> "Reminder"
     }
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 62.dp)
+    val state = when (event) {
+        is Visit -> prettyStatus(event.status.name)
+        is Task -> if (event.status == TaskStatus.DONE) "Done" else "Open"
+    }
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 68.dp)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .semantics(mergeDescendants = true) {
+                contentDescription = buildString {
+                    append("$kind for $owner, ${event.title}, $state")
+                    if (isFocused) append(", Open visit")
+                }
+            },
+        shape = RoundedCornerShape(14.dp),
+        color = if (isFocused) colors.primaryContainer.copy(alpha = 0.55f) else colors.surface,
+        border = if (isFocused) BorderStroke(1.dp, colors.outline) else null,
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(event.title, style = MaterialTheme.typography.titleMedium)
-            Text("$owner · $state", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = colors.secondaryContainer,
+                        contentColor = colors.onSecondaryContainer,
+                    ) {
+                        Text(
+                            owner,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                    Text(
+                        "$kind · $state",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+                Text(event.title, style = MaterialTheme.typography.titleMedium)
+                if (isFocused) {
+                    Text(
+                        "Open visit",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.secondary,
+                    )
+                }
+            }
+            event.time?.let { Text(it.toString(), style = MaterialTheme.typography.labelLarge) }
+            Chevron(pointsLeft = false, color = colors.onSurfaceVariant, modifier = Modifier.size(14.dp))
         }
-        event.time?.let { Text(it.toString(), style = MaterialTheme.typography.labelLarge) }
-        Chevron(pointsLeft = false, color = colors.onSurfaceVariant, modifier = Modifier.size(14.dp))
     }
 }
 

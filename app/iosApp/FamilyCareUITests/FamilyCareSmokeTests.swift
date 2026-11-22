@@ -8,16 +8,23 @@ final class FamilyCareSmokeTests: XCTestCase {
         app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
 
-        assertVisible("Care for both of you", in: app)
-        tap("Continue", in: app)
-        assertVisible("Create a child profile", in: app)
-        tap("Open day plan", in: app)
+        // Other UI tests may already have created the local demo profile in this Simulator.
+        if app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "Continue"))
+            .firstMatch
+            .waitForExistence(timeout: 3)
+        {
+            assertVisible("Care for both of you", in: app)
+            tap("Continue", in: app)
+            assertVisible("Create a child profile", in: app)
+            tap("Open day plan", in: app)
+        }
         assertVisible("Calendar", in: app)
         capture("FamilyCare-Home", in: app)
 
         tap("Calendar", in: app)
         assertVisible("November 2026", in: app)
-        tap("Well-baby visit", in: app, startsWith: true)
+        openVisitFromCalendar(in: app)
         assertVisible("Visit details", in: app)
 
         tap("Records", in: app)
@@ -81,6 +88,28 @@ final class FamilyCareSmokeTests: XCTestCase {
 
 @MainActor
 private extension FamilyCareSmokeTests {
+    func openVisitFromCalendar(in app: XCUIApplication) {
+        let wellBaby = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Well-baby visit"))
+            .firstMatch
+        if wellBaby.waitForExistence(timeout: 3) {
+            wellBaby.tap()
+            return
+        }
+        // A prior clarity test may have moved the well-baby visit off today.
+        let movedDay = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label CONTAINS[c] %@", "November 24"))
+            .firstMatch
+        if movedDay.waitForExistence(timeout: 3) {
+            movedDay.tap()
+        }
+        if wellBaby.waitForExistence(timeout: 5) {
+            wellBaby.tap()
+            return
+        }
+        tap("Recovery follow-up", in: app, startsWith: true)
+    }
+
     func labelPredicate(_ label: String, startsWith: Bool = false) -> NSPredicate {
         NSPredicate(format: startsWith ? "label BEGINSWITH %@" : "label == %@", label)
     }

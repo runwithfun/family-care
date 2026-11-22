@@ -1,5 +1,6 @@
 package com.runwithfun.familycare.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -11,14 +12,17 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,7 +31,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.runwithfun.familycare.demo.DemoFamily
+import com.runwithfun.familycare.domain.CareCalendar
 import com.runwithfun.familycare.domain.CareDate
 import com.runwithfun.familycare.domain.CareTime
 import com.runwithfun.familycare.domain.FamilyRole
@@ -51,6 +59,11 @@ fun VisitDetailScreen(
     }
 
     val person = session.person(visit.personId)
+    val ownerLabel = if (person.role == FamilyRole.MOTHER) {
+        "For you · ${person.displayName}"
+    } else {
+        person.displayName
+    }
     var title by remember(visit.id) { mutableStateOf(visit.title) }
     var provider by remember(visit.id) { mutableStateOf(visit.provider) }
     var dateText by remember(visit.id) { mutableStateOf(visit.date.toString()) }
@@ -58,8 +71,13 @@ fun VisitDetailScreen(
     var status by remember(visit.id) { mutableStateOf(visit.status) }
     var error by remember { mutableStateOf<String?>(null) }
     var savedNotice by remember { mutableStateOf<String?>(null) }
+    val colors = MaterialTheme.colorScheme
+    val draftDate = parseCareDate(dateText)
+    val draftTime = parseCareTime(timeText)
+    val lastSupportedDate = CareDate(CareCalendar.MaxYear, 12, 31)
+    val scheduleChanged = draftDate != visit.date || draftTime != visit.time
 
-    fun attemptSave() {
+    fun attemptSave(asReschedule: Boolean) {
         val parsedDate = parseCareDate(dateText)
         val parsedTime = parseCareTime(timeText)
         if (parsedDate == null) {
@@ -87,13 +105,25 @@ fun VisitDetailScreen(
         try {
             session.saveVisit(updated)
             error = null
-            savedNotice = "Saved · still the same visit."
+            savedNotice = if (asReschedule || scheduleChanged) {
+                "Rescheduled · Calendar will show ${parsedDate}."
+            } else {
+                "Saved · still the same visit."
+            }
             onSaved(parsedDate)
         } catch (failure: Exception) {
             logCareSessionError("Could not save visit ${visit.id}.", failure)
             error = "Could not save this visit."
             savedNotice = null
         }
+    }
+
+    fun moveOneDayLater() {
+        val base = parseCareDate(dateText) ?: visit.date
+        if (base == lastSupportedDate) return
+        dateText = CareCalendar.shiftDay(base, 1).toString()
+        savedNotice = null
+        error = null
     }
 
     Column(
@@ -108,17 +138,102 @@ fun VisitDetailScreen(
             Spacer(Modifier.size(6.dp))
             Text("Back")
         }
-        Text("Visit details", style = MaterialTheme.typography.headlineSmall)
         Text(
-            if (person.role == FamilyRole.MOTHER) "For you · ${person.displayName}"
-            else person.displayName,
-            style = MaterialTheme.typography.titleMedium,
+            "Visit details",
+            modifier = Modifier.semantics { heading() },
+            style = MaterialTheme.typography.headlineSmall,
         )
-        Text(
-            "Booking · ${prettyStatus(status.name)}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            color = colors.primaryContainer,
+            contentColor = colors.onPrimaryContainer,
+            border = BorderStroke(1.dp, colors.outline.copy(alpha = 0.3f)),
+        ) {
+            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(ownerLabel, style = MaterialTheme.typography.titleLarge)
+                Text(title.ifBlank { visit.title }, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "Date · ${(draftDate ?: visit.date)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    "Time · ${(draftTime ?: visit.time)?.toString() ?: "Not set"}",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    "Booking status · ${prettyStatus(status.name)}",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            color = colors.surface,
+            border = BorderStroke(1.dp, colors.outlineVariant),
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Reschedule",
+                    modifier = Modifier.semantics { heading() },
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    "Change the date or time, then save. The day plan and Calendar use the same visit.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = dateText,
+                    onValueChange = {
+                        dateText = it
+                        savedNotice = null
+                    },
+                    label = { Text("Date (YYYY-MM-DD)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = timeText,
+                    onValueChange = {
+                        timeText = it
+                        savedNotice = null
+                    },
+                    label = { Text("Time (HH:MM, optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = ::moveOneDayLater,
+                        modifier = Modifier.heightIn(min = 44.dp),
+                        enabled = (draftDate ?: visit.date) != lastSupportedDate,
+                    ) {
+                        Text("Move 1 day later")
+                    }
+                    TextButton(
+                        onClick = { dateText = DemoFamily.today.toString() },
+                        modifier = Modifier.heightIn(min = 44.dp),
+                    ) {
+                        Text("Use today")
+                    }
+                }
+                Button(
+                    onClick = { attemptSave(asReschedule = true) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.primaryContainer,
+                        contentColor = colors.onPrimaryContainer,
+                    ),
+                ) {
+                    Text(if (scheduleChanged) "Save new date & time" else "Save schedule")
+                }
+            }
+        }
+
         OutlinedTextField(
             value = title,
             onValueChange = { title = it },
@@ -133,20 +248,6 @@ fun VisitDetailScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
         )
-        OutlinedTextField(
-            value = dateText,
-            onValueChange = { dateText = it },
-            label = { Text("Date (YYYY-MM-DD)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            value = timeText,
-            onValueChange = { timeText = it },
-            label = { Text("Time (HH:MM, optional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-        )
         Text("Booking state", style = MaterialTheme.typography.labelLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             VisitStatus.entries.forEach { option ->
@@ -158,15 +259,18 @@ fun VisitDetailScreen(
             }
         }
         error?.let {
-            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+            Text(it, color = colors.error, style = MaterialTheme.typography.bodyMedium)
         }
         savedNotice?.let {
-            Text(it, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+            Text(it, color = colors.secondary, style = MaterialTheme.typography.bodyMedium)
         }
-        Button(onClick = ::attemptSave, modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)) {
+        Button(
+            onClick = { attemptSave(asReschedule = false) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
+        ) {
             Text("Save visit")
         }
-        TextButton(onClick = ::attemptSave, modifier = Modifier.heightIn(min = 44.dp)) {
+        TextButton(onClick = { attemptSave(asReschedule = false) }, modifier = Modifier.heightIn(min = 44.dp)) {
             Text("Retry save")
         }
     }

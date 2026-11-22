@@ -40,6 +40,34 @@ object CareCalendar {
     fun clampDay(year: Int, month: Int, day: Int): CareDate =
         CareDate(year, month, day.coerceIn(1, lengthOfMonth(year, month)))
 
+    /** Shifts [date] by [days], staying within year 1…9999. */
+    fun shiftDay(date: CareDate, days: Int): CareDate {
+        var year = date.year
+        var month = date.month
+        var day = date.day + days
+        while (day < 1) {
+            month -= 1
+            if (month < 1) {
+                month = 12
+                year -= 1
+                require(year >= MinYear) { "Date shift left the supported calendar range" }
+            }
+            day += lengthOfMonth(year, month)
+        }
+        while (true) {
+            val length = lengthOfMonth(year, month)
+            if (day <= length) break
+            day -= length
+            month += 1
+            if (month > 12) {
+                month = 1
+                year += 1
+                require(year <= MaxYear) { "Date shift left the supported calendar range" }
+            }
+        }
+        return CareDate(year, month, day)
+    }
+
     // Monday = 0 … Sunday = 6
     fun dayOfWeekMondayBased(year: Int, month: Int, day: Int): Int {
         var y = year

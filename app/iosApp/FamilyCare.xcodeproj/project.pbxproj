@@ -143,7 +143,7 @@
 		};
 		100000000000000000000013 = {
 			isa = PBXGroup;
-			children = (100000000000000000000014);
+			children = (100000000000000000000014, 10000000000000000000001F);
 			path = FamilyCareUITests;
 			sourceTree = "<group>";
 		};
@@ -157,6 +157,16 @@
 			isa = PBXBuildFile;
 			fileRef = 100000000000000000000014;
 		};
+		10000000000000000000001F = {
+			isa = PBXFileReference;
+			lastKnownFileType = sourcecode.swift;
+			path = CalendarVisitClarityTests.swift;
+			sourceTree = "<group>";
+		};
+		100000000000000000000020 = {
+			isa = PBXBuildFile;
+			fileRef = 10000000000000000000001F;
+		};
 		100000000000000000000016 = {
 			isa = PBXFileReference;
 			explicitFileType = wrapper.cfbundle;
@@ -167,7 +177,7 @@
 		100000000000000000000017 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (100000000000000000000015);
+			files = (100000000000000000000015, 100000000000000000000020);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		100000000000000000000018 = {
