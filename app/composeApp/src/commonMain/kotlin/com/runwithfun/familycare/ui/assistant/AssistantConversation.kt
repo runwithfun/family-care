@@ -44,13 +44,16 @@ internal class AssistantConversation(
     private val store: RecordsLocalStore,
 ) {
     private val tools = AssistantTools(session, records)
+    private val historyStore = AssistantHistoryStore(store)
     private val threads = mutableStateMapOf<String, List<AssistantTurn>>()
     private val workspaces = mutableStateMapOf<String, QuestionWorkspace>()
     private val visitSelections = mutableStateMapOf<String, String?>()
     private val needsReview = mutableStateMapOf<String, Boolean>()
 
     val people: List<FamilyMember> = session.people
-    var personId by mutableStateOf((people.firstOrNull { it.role == FamilyRole.MOTHER } ?: people.first()).id)
+    var personId by mutableStateOf(
+        restoreSelectedPerson() ?: (people.firstOrNull { it.role == FamilyRole.MOTHER } ?: people.first()).id,
+    )
         private set
     var message by mutableStateOf<String?>(null)
         private set
@@ -71,8 +74,11 @@ internal class AssistantConversation(
     init {
         for (person in people) {
             val saved = restoreWorkspace(person.id)
+            val history = restoreHistory(person.id)
             workspaces[person.id] = saved
-            visitSelections[person.id] = saved.proposal?.visit?.id
+            threads[person.id] = history?.turns.orEmpty()
+            val selection = if (history == null) saved.proposal?.visit?.id else history.visitId
+            visitSelections[person.id] = selection?.takeIf { tools.openVisit(AssistantScope(person.id, it)) != null }
         }
     }
 
@@ -80,6 +86,12 @@ internal class AssistantConversation(
         if (id == personId || people.none { it.id == id }) return
         personId = id
         message = null
+        try {
+            store.write(AssistantSelectedPersonKey, id)
+        } catch (error: Exception) {
+            reportFailure("save the selected Assistant person", id, error)
+            message = "Could not save the person selected for your conversation on this device."
+        }
     }
 
     fun selectVisit(id: String?) {
@@ -87,7 +99,11 @@ internal class AssistantConversation(
         visitSelections[personId] = id
         message = null
         val last = turns.lastOrNull()
-        if (id != null && last?.reply is AssistantReply.ChooseVisit) respond(last.prompt, replaceLast = true)
+        if (id != null && last?.reply is AssistantReply.ChooseVisit) {
+            respond(last.prompt, replaceLast = true)
+        } else {
+            persistHistory()
+        }
     }
 
     fun send(text: String) {
@@ -233,6 +249,7 @@ internal class AssistantConversation(
         }
         val history = if (replaceLast) turns.dropLast(1) else turns
         threads[personId] = history + AssistantTurn(prompt, reply)
+        persistHistory()
     }
 
     private fun preview(question: AssistantToolResult.Question): AssistantReply.Answer {
@@ -288,6 +305,35 @@ internal class AssistantConversation(
     private fun persistWorkspace(next: QuestionWorkspace) {
         store.write(questionWorkspaceKey(personId), encodeQuestionWorkspace(next))
         workspaces[personId] = next
+    }
+
+    private fun persistHistory() {
+        val history = AssistantHistory(visitId, turns)
+        try {
+            historyStore.write(assistantHistoryKey(personId), encodeAssistantHistory(history))
+        } catch (error: Exception) {
+            reportFailure("save Assistant history for $personId", history, error)
+            message = "Could not save your latest conversation changes on this device."
+        }
+    }
+
+    private fun restoreHistory(owner: String): AssistantHistory? {
+        val key = assistantHistoryKey(owner)
+        var raw: String? = null
+        return try {
+            raw = historyStore.read(key)
+            raw?.let { decodeAssistantHistory(it, owner) }
+        } catch (error: Exception) {
+            reportFailure("restore Assistant history for $owner", raw ?: key, error)
+            null
+        }
+    }
+
+    private fun restoreSelectedPerson(): String? = try {
+        store.read(AssistantSelectedPersonKey)?.takeIf { id -> people.any { it.id == id } }
+    } catch (error: Exception) {
+        reportFailure("restore the selected Assistant person", AssistantSelectedPersonKey, error)
+        null
     }
 
     private fun restoreWorkspace(owner: String): QuestionWorkspace {
