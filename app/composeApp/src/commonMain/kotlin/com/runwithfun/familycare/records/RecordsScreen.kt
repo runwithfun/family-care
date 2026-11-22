@@ -86,6 +86,7 @@ fun RecordsScreen(
     onOpenTask: (Task) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var ownerId by rememberSaveable { mutableStateOf(DemoFamily.childId) }
     val selected = selectedDocumentId?.let { records.document(it) }
 
     Column(
@@ -115,6 +116,8 @@ fun RecordsScreen(
             RecordsOverview(
                 records = records,
                 people = people,
+                ownerId = ownerId,
+                onSelectOwner = { ownerId = it },
                 onOpenDocument = { onSelectDocument(it) },
             )
         } else {
@@ -134,9 +137,10 @@ fun RecordsScreen(
 private fun RecordsOverview(
     records: RecordsController,
     people: Map<String, FamilyMember>,
+    ownerId: String,
+    onSelectOwner: (String) -> Unit,
     onOpenDocument: (String) -> Unit,
 ) {
-    var ownerId by rememberSaveable { mutableStateOf(DemoFamily.childId) }
     val addPdf = rememberRecordImportAction(records) { _, documentId -> onOpenDocument(documentId) }
     val ownerDocuments = records.documents().filter { it.personId == ownerId }
     val ownerImmunizations = records.plan.recordedImmunizations.filter { it.personId == ownerId }
@@ -147,7 +151,7 @@ private fun RecordsOverview(
         people.values.forEach { person ->
             FilterChip(
                 selected = person.id == ownerId,
-                onClick = { ownerId = person.id },
+                onClick = { onSelectOwner(person.id) },
                 label = { Text(person.displayName) },
             )
         }
@@ -175,19 +179,21 @@ private fun RecordsOverview(
                 ) {
                     Text("Choose PDF")
                 }
-                if (!records.isPdfImported()) {
-                    OutlinedButton(
-                        onClick = { records.importSyntheticImmunizationPdf() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Import synthetic clinic PDF")
+                if (ownerId == DemoFamily.childId) {
+                    if (!records.isPdfImported()) {
+                        OutlinedButton(
+                            onClick = { records.importSyntheticImmunizationPdf() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Import synthetic clinic PDF")
+                        }
+                    } else {
+                        Text(
+                            "Synthetic clinic PDF is stored on this device.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
-                } else {
-                    Text(
-                        "Synthetic clinic PDF is stored on this device.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
         }
