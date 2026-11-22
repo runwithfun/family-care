@@ -62,6 +62,7 @@ private val Rose = Color(0xFF8A455C)
 @Composable
 fun FamilyOnboardingScreen(
     illustration: (@Composable () -> Unit)? = null,
+    saveFailed: Boolean = false,
     onComplete: (String, ByteArray?) -> Unit,
 ) {
     var showProfile by rememberSaveable { mutableStateOf(false) }
@@ -182,6 +183,13 @@ fun FamilyOnboardingScreen(
                                 cursorColor = Rose,
                             ),
                         )
+                        if (saveFailed) {
+                            Text(
+                                "Couldn't save the profile. Try again.",
+                                color = Rose,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     } else {
                         Text(
                             "Family Care",
