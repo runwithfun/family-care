@@ -71,24 +71,24 @@ object ActivityPdf {
                     LineKind.Title, LineKind.Section, LineKind.Brand -> "F2"
                     else -> "F1"
                 }
+                val stepIndent = if (line.kind == LineKind.Step) 22 else 0
+                if (line.kind == LineKind.Step) {
+                    append("${stepFill(line.stepIndex)}${circle(textLeft + 8, baseline + 2, 9)}")
+                }
                 append(
                     when (line.kind) {
                         LineKind.Brand -> "0.18 0.42 0.48 rg\n"
                         LineKind.Title -> "0.18 0.22 0.28 rg\n"
                         LineKind.Stage -> "0.55 0.35 0.62 rg\n"
-                        LineKind.Section -> "0.95 0.45 0.35 rg\n"
+                        LineKind.Section -> "0.63 0.25 0.18 rg\n"
                         LineKind.Step -> stepColor(line.stepIndex)
                         LineKind.Source -> "0.45 0.45 0.48 rg\n"
                         else -> "0.22 0.24 0.28 rg\n"
                     },
                 )
-                if (line.kind == LineKind.Step) {
-                    val badgeY = baseline - 2
-                    append("${stepFill(line.stepIndex)}${circle(textLeft + 8, badgeY + 4, 9)}")
-                }
-                for (part in wrap(line.text, maxTextWidth * 10 / size)) {
+                for (part in wrap(line.text, (maxTextWidth - stepIndent) * 10 / size)) {
                     check(baseline >= margin + 28) { "The activity does not fit on one ${paper.label} page" }
-                    val x = if (line.kind == LineKind.Step) textLeft + 22 else textLeft
+                    val x = textLeft + stepIndent
                     append("BT /$font $size Tf $x $baseline Td (")
                     append(escapePdfString(part))
                     append(") Tj ET\n")
