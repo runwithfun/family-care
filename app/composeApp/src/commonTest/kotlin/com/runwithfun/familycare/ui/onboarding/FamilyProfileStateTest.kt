@@ -1,5 +1,6 @@
 package com.runwithfun.familycare.ui.onboarding
 
+import com.runwithfun.familycare.domain.CareDate
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -10,15 +11,24 @@ import kotlin.test.assertTrue
 
 class FamilyProfileStateTest {
     @Test
-    fun savedNameAndPhotoReloadTogether() {
+    fun savedNameBirthDateNotesAndPhotoReloadTogether() {
         val store = TestStore()
         val photo = byteArrayOf(12, 34, 56)
         val state = FamilyProfileState(store)
-        assertTrue(state.save("  Zoë  ", photo))
+        assertTrue(
+            state.save(
+                "  Zoë  ",
+                birthDate = CareDate(2026, 9, 28),
+                notes = "Loves tummy time",
+                photoBytes = photo,
+            ),
+        )
         photo[0] = 0
 
         val restored = assertNotNull(FamilyProfileState(store).profile)
         assertEquals("Zoë", restored.childName)
+        assertEquals(CareDate(2026, 9, 28), restored.birthDate)
+        assertEquals("Loves tummy time", restored.notes)
         assertContentEquals(byteArrayOf(12, 34, 56), restored.photoBytes)
         assertContentEquals(byteArrayOf(12, 34, 56), state.profile?.photoBytes)
     }
@@ -27,12 +37,13 @@ class FamilyProfileStateTest {
     fun profileCanBeRestoredWithoutPhoto() {
         val store = TestStore()
         val state = FamilyProfileState(store)
-        assertTrue(state.save("Maya", byteArrayOf(1)))
-        assertTrue(state.save("Maya", null))
-        assertEquals("TWF5YQ==:", store.load())
+        assertTrue(state.save("Maya", birthDate = CareDate(2026, 9, 28), photoBytes = byteArrayOf(1)))
+        assertTrue(state.save("Maya", birthDate = CareDate(2026, 9, 28), photoBytes = null))
+        assertEquals("v2|TWF5YQ==|2026-09-28||", store.load())
 
         val restored = assertNotNull(FamilyProfileState(store).profile)
         assertEquals("Maya", restored.childName)
+        assertEquals(CareDate(2026, 9, 28), restored.birthDate)
         assertNull(restored.photoBytes)
     }
 
@@ -43,6 +54,7 @@ class FamilyProfileStateTest {
 
         assertEquals("Maya", withoutPhoto.childName)
         assertNull(withoutPhoto.photoBytes)
+        assertNull(withoutPhoto.birthDate)
         assertEquals("Maya", withPhoto.childName)
         assertContentEquals(byteArrayOf(1, 2, 3), withPhoto.photoBytes)
     }
@@ -51,15 +63,15 @@ class FamilyProfileStateTest {
     fun failedWriteDoesNotPublishUnsavedProfile() {
         val store = TestStore()
         val state = FamilyProfileState(store)
-        assertTrue(state.save("Maya", null))
+        assertTrue(state.save("Maya", photoBytes = null))
         store.rejectWrite = true
 
-        assertFalse(state.save("Ava", byteArrayOf(1)))
+        assertFalse(state.save("Ava", photoBytes = byteArrayOf(1)))
         assertTrue(state.saveFailed)
         assertEquals("Maya", state.profile?.childName)
         assertEquals("Maya", FamilyProfileState(store).profile?.childName)
         store.rejectWrite = false
-        assertTrue(state.save("Ava", null))
+        assertTrue(state.save("Ava", photoBytes = null))
         assertFalse(state.saveFailed)
         assertEquals("Ava", FamilyProfileState(store).profile?.childName)
     }
