@@ -88,7 +88,7 @@ private enum class AppTab(val label: String) {
 private sealed interface HomeDetail {
     data object Profile : HomeDetail
     data object Settings : HomeDetail
-    data object EditProfile : HomeDetail
+    data class EditProfile(val returnTo: HomeDetail) : HomeDetail
     data object Calendar : HomeDetail
     data class VisitEditor(val visitId: String, val fromCalendar: Boolean) : HomeDetail
     data class TaskEditor(val taskId: String?, val date: CareDate, val fromCalendar: Boolean) : HomeDetail
@@ -122,9 +122,8 @@ fun FamilyCareApp() {
 @Composable
 private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileState) {
     val photo = rememberFamilyProfilePhoto(profile.photoBytes)
-    val birthDate = profile.birthDate ?: CareDate(2026, 9, 28)
-    val plan = remember(profile.childName, birthDate) {
-        DemoFamily.createPlan(profile.childName, birthDate)
+    val plan = remember(profile.childName, profile.birthDate) {
+        DemoFamily.createPlan(profile.childName, profile.birthDate)
     }
     val assistant = rememberAssistantActions(plan)
     val growingNotes = rememberGrowingNotes(plan)
@@ -143,7 +142,7 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
         when (val page = detail) {
             is HomeDetail.VisitEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
             is HomeDetail.TaskEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
-            HomeDetail.EditProfile -> detail = HomeDetail.Settings
+            is HomeDetail.EditProfile -> detail = page.returnTo
             HomeDetail.Settings -> detail = HomeDetail.Profile
             HomeDetail.Calendar, HomeDetail.Profile -> detail = null
             null -> when {
@@ -178,7 +177,7 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                                 )
                                 val age = child.birthDate?.let { childAge(it, DemoFamily.today) }
                                 if (age != null) Text(age, color = colors.onSurfaceVariant)
-                                child.birthDate?.let {
+                                profile.birthDate?.let {
                                     Text("Born $it", color = colors.onSurfaceVariant)
                                 }
                                 if (profile.notes.isNotBlank()) {
@@ -191,7 +190,7 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                             }
                         }
                         Button(
-                            onClick = { detail = HomeDetail.EditProfile },
+                            onClick = { detail = HomeDetail.EditProfile(HomeDetail.Profile) },
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
@@ -211,11 +210,11 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                     HomeDetail.Settings -> Page("Settings", onBack = { detail = HomeDetail.Profile }) {
                         SettingsScreen(
                             profile = profile,
-                            onEditProfile = { detail = HomeDetail.EditProfile },
+                            onEditProfile = { detail = HomeDetail.EditProfile(HomeDetail.Settings) },
                             onBack = { detail = HomeDetail.Profile },
                         )
                     }
-                    HomeDetail.EditProfile -> Page("Edit profile", onBack = { detail = HomeDetail.Settings }) {
+                    is HomeDetail.EditProfile -> Page("Edit profile", onBack = { detail = page.returnTo }) {
                         EditProfileScreen(
                             profile = profile,
                             saveFailed = family.saveFailed,
@@ -227,7 +226,7 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                                     photoBytes = photoBytes,
                                 )
                             },
-                            onBack = { detail = HomeDetail.Settings },
+                            onBack = { detail = page.returnTo },
                         )
                     }
                     HomeDetail.Calendar -> CalendarScreen(

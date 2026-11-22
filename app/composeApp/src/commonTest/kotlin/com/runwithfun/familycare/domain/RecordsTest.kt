@@ -25,8 +25,9 @@ class RecordsTest {
         val store = InMemoryRecordsLocalStore()
         val files = DocumentFileStore(store)
         val reviews = DocumentReviewStore(store)
-        val plan = DemoFamily.createPlan("Nora")
-        val records = RecordsController(plan, files, reviews, DemoFamily.immunizationPdfBody("Nora"))
+        val birthDate = CareDate(2026, 8, 23)
+        val plan = DemoFamily.createPlan("Nora", birthDate)
+        val records = RecordsController(plan, files, reviews, DemoFamily.immunizationPdfBody("Nora", birthDate))
 
         assertFalse(records.isPdfImported())
         assertTrue(records.importSyntheticImmunizationPdf())
@@ -35,6 +36,7 @@ class RecordsTest {
         assertNotNull(bytes)
         assertTrue(bytes.isPdfHeader())
         assertTrue(bytes.containsLatin1("Example immunization A"))
+        assertTrue(bytes.containsLatin1("Date of birth: $birthDate"))
 
         val opened = records.reopenOriginal(DemoFamily.immunizationDocumentId)
         assertNotNull(opened)
@@ -44,6 +46,13 @@ class RecordsTest {
         assertEquals("demo-immunizations.pdf", opened.fileName)
         assertEquals(DemoFamily.immunizationPdfStorageKey, opened.storageKey)
         assertEquals("application/pdf", plan.document(DemoFamily.immunizationDocumentId)!!.original.mediaType)
+
+        val updatedBody = DemoFamily.immunizationPdfBody("Nora", birthDate = null)
+        assertTrue(updatedBody.contains("Date of birth: Not provided"))
+        val updatedProfile = RecordsController(
+            DemoFamily.createPlan("Nora", birthDate = null), files, reviews, updatedBody,
+        )
+        assertContentEquals(bytes, updatedProfile.reopenOriginal(DemoFamily.immunizationDocumentId)?.pdfBytes)
 
         val recovery = plan.document(DemoFamily.recoveryDocumentId)!!
         assertTrue(recovery.original.content is OriginalContent.Text)

@@ -20,6 +20,8 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +35,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.CareDate
 import com.runwithfun.familycare.ui.home.ProfileAvatar
+import com.runwithfun.familycare.ui.parseCareDate
+
+private val BirthDatePattern = Regex("[0-9]{4}-[0-9]{2}-[0-9]{2}")
 
 data class ChildProfileDraft(
     val name: String,
@@ -52,10 +58,17 @@ fun rememberChildProfileDraft(
     initialPhoto: ByteArray? = null,
 ): ChildProfileDraftState {
     val preview = remember(initialPhoto) { initialPhoto?.let(::decodeOnboardingPhoto) }
-    return remember(initialName, initialBirthDate, initialNotes, initialPhoto) {
+    val birthDateText = initialBirthDate?.toString().orEmpty()
+    val textDraftSaver = listSaver<ChildProfileDraftState, String>(
+        save = { listOf(it.name, it.birthDateText, it.notes) },
+        restore = { (name, birthDate, notes) ->
+            ChildProfileDraftState(name, birthDate, notes, initialPhoto, preview)
+        },
+    )
+    return rememberSaveable(initialName, birthDateText, initialNotes, initialPhoto, saver = textDraftSaver) {
         ChildProfileDraftState(
             name = initialName,
-            birthDateText = initialBirthDate?.toString().orEmpty(),
+            birthDateText = birthDateText,
             notes = initialNotes,
             photoBytes = initialPhoto,
             photoPreview = preview,
@@ -102,22 +115,23 @@ class ChildProfileDraftState(
         photoPending = false
     }
 
-    fun validatedBirthDate(): CareDate? {
+    fun validatedBirthDate(required: Boolean = true): CareDate? {
         val raw = birthDateText.trim()
         if (raw.isEmpty()) {
-            birthDateError = "Add the child's date of birth (YYYY-MM-DD)."
+            birthDateError = if (required) "Add the child's date of birth (YYYY-MM-DD)." else null
             return null
         }
-        return try {
-            val parts = raw.split('-')
-            require(parts.size == 3) { "invalid" }
-            CareDate(parts[0].toInt(), parts[1].toInt(), parts[2].toInt()).also {
-                birthDateError = null
-            }
-        } catch (_: Exception) {
+        val birthDate = raw.takeIf(BirthDatePattern::matches)?.let(::parseCareDate)
+        if (birthDate == null) {
             birthDateError = "Use a valid date as YYYY-MM-DD."
-            null
+            return null
         }
+        if (birthDate.toString() > DemoFamily.today.toString()) {
+            birthDateError = "Date of birth must be on or before the demo day (${DemoFamily.today})."
+            return null
+        }
+        birthDateError = null
+        return birthDate
     }
 
     fun toDraft(): ChildProfileDraft = ChildProfileDraft(
@@ -133,6 +147,7 @@ class ChildProfileDraftState(
 fun ChildProfileFields(
     state: ChildProfileDraftState,
     modifier: Modifier = Modifier,
+    birthDateRequired: Boolean = true,
     onSubmit: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -224,12 +239,17 @@ fun ChildProfileFields(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Date of birth (YYYY-MM-DD)") },
             supportingText = {
-                Text(state.birthDateError ?: "Used for age stages and the day plan.")
+                val hint = if (birthDateRequired) {
+                    "Used for age stages and the day plan."
+                } else {
+                    "Optional. Add it to get an age stage suggestion."
+                }
+                Text(state.birthDateError ?: hint)
             },
             isError = state.birthDateError != null,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number,
+                keyboardType = KeyboardType.Text,
                 imeAction = ImeAction.Next,
             ),
             keyboardActions = KeyboardActions(onNext = { focus.moveFocus(FocusDirection.Down) }),

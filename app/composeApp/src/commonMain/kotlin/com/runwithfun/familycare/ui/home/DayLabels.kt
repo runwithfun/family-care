@@ -1,6 +1,7 @@
 package com.runwithfun.familycare.ui.home
 
 import com.runwithfun.familycare.domain.CareDate
+import com.runwithfun.familycare.domain.completedMonthsSince
 
 private val WeekdayNames = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 private val MonthNames = listOf(
@@ -21,8 +22,7 @@ internal fun childAge(birthDate: CareDate, asOf: CareDate): String? {
     val days = asOf.ordinalDay() - birthDate.ordinalDay()
     if (days < 0) return null
     if (days < 7) return "Newborn"
-    val months = (asOf.year - birthDate.year) * 12 + asOf.month - birthDate.month -
-        if (asOf.day < birthDate.day) 1 else 0
+    val months = asOf.completedMonthsSince(birthDate)
     return when {
         months < 3 -> ageLabel(days / 7, "week")
         months < 24 -> ageLabel(months, "month")
