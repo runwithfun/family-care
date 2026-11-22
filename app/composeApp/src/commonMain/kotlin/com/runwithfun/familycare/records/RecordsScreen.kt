@@ -264,14 +264,16 @@ private fun DocumentDetail(
             ) {
                 Text("Provider follow-up", style = MaterialTheme.typography.titleMedium)
                 Text(message, style = MaterialTheme.typography.bodyMedium)
-                val linked = records.providerRequest(current.id)
-                if (linked != null) {
-                    TextButton(onClick = { onOpenTask(linked) }) {
-                        Text(if (linked.status == TaskStatus.DONE) "View completed request" else "View provider request")
-                    }
-                } else {
-                    OutlinedButton(onClick = { records.ensureProviderRequest(current.id)?.let(onOpenTask) }) {
-                        Text("Add provider request")
+                if (current.kind == DocumentKind.IMMUNIZATION_RECORD) {
+                    val linked = records.providerRequest(current.id)
+                    if (linked != null) {
+                        TextButton(onClick = { onOpenTask(linked) }) {
+                            Text(if (linked.status == TaskStatus.DONE) "View completed request" else "View provider request")
+                        }
+                    } else {
+                        OutlinedButton(onClick = { records.ensureProviderRequest(current.id)?.let(onOpenTask) }) {
+                            Text("Add provider request")
+                        }
                     }
                 }
             }
@@ -280,7 +282,7 @@ private fun DocumentDetail(
 
     val openRequests = records.openRequestTasks(current.id)
     if (openRequests.isNotEmpty()) {
-        SectionTitle("Open requests")
+        SectionTitle("Open follow-ups")
         for (task in openRequests) {
             Text("${task.title} · ${task.status.name.lowercase()}", style = MaterialTheme.typography.bodyMedium)
         }

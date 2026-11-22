@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.CareDocument
 import com.runwithfun.familycare.domain.CarePlan
+import com.runwithfun.familycare.domain.DocumentKind
 import com.runwithfun.familycare.domain.DocumentOriginal
 import com.runwithfun.familycare.domain.FieldReview
 import com.runwithfun.familycare.domain.OriginalContent
@@ -170,6 +171,7 @@ class RecordsController(
 
     fun providerRequest(documentId: String): Task? {
         revision
+        if (plan.document(documentId)?.kind != DocumentKind.IMMUNIZATION_RECORD) return null
         return plan.openTasksForDocument(documentId).firstOrNull()
             ?: (plan.event("request-$documentId") as? Task)
     }
@@ -179,6 +181,7 @@ class RecordsController(
         val taskId = "request-$documentId"
         return try {
             val document = plan.document(documentId) ?: error("Unknown document: $documentId")
+            if (document.kind != DocumentKind.IMMUNIZATION_RECORD) return null
             val request = Task(
                 id = taskId,
                 personId = document.personId,

@@ -203,6 +203,21 @@ class RecordsTest {
     }
 
     @Test
+    fun recoveryNoteFollowUpsCannotBecomeImmunizationRequests() {
+        val plan = DemoFamily.createPlan()
+        val store = InMemoryRecordsLocalStore()
+        val records = RecordsController(plan, DocumentFileStore(store), DocumentReviewStore(store))
+        val documentId = DemoFamily.recoveryDocumentId
+        val existing = plan.openTasksForDocument(documentId)
+
+        assertNotNull(plan.document(documentId)?.providerFollowUpMessage())
+        assertNull(records.providerRequest(documentId))
+        assertNull(records.ensureProviderRequest(documentId))
+        assertEquals(existing, records.openRequestTasks(documentId))
+        assertNull(plan.event("request-$documentId"))
+    }
+
+    @Test
     fun textReviewsSurviveDelimitersAndLegacyMissingRows() {
         val documentId = DemoFamily.recoveryDocumentId
         val store = InMemoryRecordsLocalStore(
