@@ -1,0 +1,79 @@
+name: iOS demo smoke
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/ios-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-demo-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Choose a fresh iPhone simulator
+        id: simulator
+        run: |
+          xcodebuild -version
+          xcrun simctl list devices available -j > "$RUNNER_TEMP/family-care-devices.json"
+          simulator=$(python3 - "$RUNNER_TEMP/family-care-devices.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          devices = json.loads(Path(sys.argv[1]).read_text())["devices"]
+          candidates = []
+          for runtime, simulator_devices in devices.items():
+              if ".iOS-" not in runtime:
+                  continue
+              version = tuple(map(int, runtime.split(".iOS-")[1].split("-")))
+              for device in simulator_devices:
+                  if device["name"].startswith("iPhone") and device["isAvailable"]:
+                      preferred_model = device["name"] == "iPhone 17 Pro"
+                      candidates.append((version, preferred_model, device["udid"]))
+          if not candidates:
+              raise SystemExit("The runner has no available iPhone simulator")
+          print(max(candidates)[2])
+          PY
+          )
+          echo "id=$simulator" >> "$GITHUB_OUTPUT"
+          xcrun simctl bootstatus "$simulator" -b
+      - name: Walk through the synthetic family demo
+        env:
+          SIMULATOR_ID: ${{ steps.simulator.outputs.id }}
+        run: |
+          xcodebuild -project app/iosApp/FamilyCare.xcodeproj -scheme FamilyCare \
+            -destination "platform=iOS Simulator,id=$SIMULATOR_ID" \
+            -derivedDataPath "$RUNNER_TEMP/family-care-derived" \
+            -resultBundlePath "$RUNNER_TEMP/family-care-ui.xcresult" \
+            -parallel-testing-enabled NO -collect-test-diagnostics never \
+            CODE_SIGNING_ALLOWED=NO test
+      - name: Export synthetic demo screenshots
+        if: always()
+        run: |
+          if test -d "$RUNNER_TEMP/family-care-ui.xcresult"; then
+            xcrun xcresulttool export attachments --path "$RUNNER_TEMP/family-care-ui.xcresult" \
+              --output-path "$RUNNER_TEMP/family-care-attached-screens"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: family-care-simulator-screens
+          path: ${{ runner.temp }}/family-care-attached-screens
+          if-no-files-found: ignore
+          retention-days: 3
