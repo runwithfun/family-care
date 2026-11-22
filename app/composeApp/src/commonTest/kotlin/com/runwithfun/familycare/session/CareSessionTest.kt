@@ -7,6 +7,7 @@ import com.runwithfun.familycare.domain.TaskStatus
 import com.runwithfun.familycare.domain.Visit
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -66,6 +67,67 @@ class CareSessionTest {
     }
 
     @Test
+    fun failedTaskWriteDoesNotPublishOrLeakIntoTheNextSave() {
+        val store = MemoryCarePlanEventStore()
+        val session = CareSession(DemoFamily.createPlan(), store)
+        val task = Task(
+            id = session.allocateLocalId(),
+            personId = DemoFamily.childId,
+            title = "Bring the growth chart",
+            date = DemoFamily.today,
+        )
+        val previous = store.load()
+
+        store.failAfterNextWrite = true
+        assertFailsWith<IllegalStateException> { session.saveTask(task) }
+        assertNull(session.event(task.id))
+        assertEquals(previous, store.load())
+
+        session.allocateLocalId()
+        val restored = CareSession(DemoFamily.createPlan(), store)
+        assertNull(restored.event(task.id))
+
+        session.saveTask(task)
+        session.saveTask(task)
+        val afterRetry = CareSession(DemoFamily.createPlan(), store)
+        assertEquals(listOf(task), afterRetry.eventsOn(task.date).filter { it.id == task.id })
+    }
+
+    @Test
+    fun failedIdReservationLeavesNextIdAvailable() {
+        val store = MemoryCarePlanEventStore()
+        val session = CareSession(DemoFamily.createPlan(), store)
+
+        store.failAfterNextWrite = true
+        assertFailsWith<IllegalStateException> { session.allocateLocalId() }
+        assertEquals(CarePlanEventSnapshot(1, emptyList()), store.load()?.let(::decodeCarePlanEvents))
+
+        assertEquals("local-plan-item-1", session.allocateLocalId())
+        val restored = CareSession(DemoFamily.createPlan(), store)
+        assertEquals("local-plan-item-2", restored.allocateLocalId())
+    }
+
+    @Test
+    fun invalidEditRestoresPreviousSnapshot() {
+        val store = MemoryCarePlanEventStore()
+        val session = CareSession(DemoFamily.createPlan(), store)
+        val task = Task(
+            id = session.allocateLocalId(),
+            personId = DemoFamily.childId,
+            title = "Bring the growth chart",
+            date = DemoFamily.today,
+        )
+        session.saveTask(task)
+        val previous = store.load()
+
+        assertFailsWith<IllegalArgumentException> {
+            session.saveTask(task.copy(personId = DemoFamily.motherId))
+        }
+        assertEquals(task, session.event(task.id))
+        assertEquals(previous, store.load())
+    }
+
+    @Test
     fun codecRoundTripsVisitAndTask() {
         val visit = DemoFamily.createPlan().eventsOn(DemoFamily.today).filterIsInstance<Visit>().first()
         val task = Task(
@@ -84,9 +146,15 @@ class CareSessionTest {
     private class MemoryCarePlanEventStore(
         private var value: String? = null,
     ) : CarePlanEventStore {
+        var failAfterNextWrite = false
+
         override fun load(): String? = value
         override fun save(value: String) {
             this.value = value
+            if (failAfterNextWrite) {
+                failAfterNextWrite = false
+                error("The test store reported a failure after writing.")
+            }
         }
     }
 }

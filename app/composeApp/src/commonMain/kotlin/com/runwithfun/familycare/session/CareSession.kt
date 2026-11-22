@@ -50,10 +50,12 @@ class CareSession internal constructor(
     }
 
     fun allocateLocalId(prefix: String = "local-plan-item"): String {
+        check(nextLocalId < Int.MAX_VALUE) { "The care-plan local ID range is exhausted." }
         val id = "$prefix-$nextLocalId"
-        nextLocalId++
+        val followingId = nextLocalId + 1
         // Persist the counter even if the following save fails, so IDs are never reused.
-        persist()
+        persist(CarePlanEventSnapshot(followingId, overlay.values.toList()))
+        nextLocalId = followingId
         return id
     }
 
@@ -66,13 +68,15 @@ class CareSession internal constructor(
     }
 
     private fun applyAndPersist(event: CareEvent) {
-        if (plan.event(event.id) == null) {
-            plan.addEvent(event)
-        } else {
-            plan.updateEvent(event)
+        val events = overlay + (event.id to event)
+        persist(CarePlanEventSnapshot(nextLocalId, events.values.toList())) {
+            if (plan.event(event.id) == null) {
+                plan.addEvent(event)
+            } else {
+                plan.updateEvent(event)
+            }
         }
         overlay[event.id] = event
-        persist()
         generation++
     }
 
@@ -104,9 +108,21 @@ class CareSession internal constructor(
         }
     }
 
-    private fun persist() {
-        val encoded = encodeCarePlanEvents(CarePlanEventSnapshot(nextLocalId, overlay.values.toList()))
-        store.save(encoded)
+    private fun persist(snapshot: CarePlanEventSnapshot, publish: () -> Unit = {}) {
+        val previous = store.load()
+            ?: encodeCarePlanEvents(CarePlanEventSnapshot(nextLocalId, overlay.values.toList()))
+        val encoded = encodeCarePlanEvents(snapshot)
+        try {
+            store.save(encoded)
+            publish()
+        } catch (failure: Exception) {
+            try {
+                store.save(previous)
+            } catch (rollbackError: Exception) {
+                if (rollbackError !== failure) failure.addSuppressed(rollbackError)
+            }
+            throw failure
+        }
     }
 
     private fun observe() {

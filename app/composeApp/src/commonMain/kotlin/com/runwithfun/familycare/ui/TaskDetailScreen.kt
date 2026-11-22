@@ -86,27 +86,27 @@ fun TaskDetailScreen(
             savedNotice = null
             return
         }
-        val id = assignedId ?: session.allocateLocalId().also { assignedId = it }
-        val updated = Task(
-            id = id,
-            personId = if (isDraft) personId else existing.personId,
-            title = title.trim(),
-            date = parsedDate,
-            time = parsedTime,
-            status = status,
-            sourceDocumentId = existing?.sourceDocumentId,
-            visitId = existing?.visitId,
-        )
-        try {
-            session.saveTask(updated)
-            error = null
-            savedNotice = "Saved · plan item ID ${updated.id} kept."
-            onSaved(updated.id, parsedDate)
+        val updated = try {
+            val id = assignedId ?: session.allocateLocalId().also { assignedId = it }
+            Task(
+                id = id,
+                personId = existing?.personId ?: personId,
+                title = title.trim(),
+                date = parsedDate,
+                time = parsedTime,
+                status = status,
+                sourceDocumentId = existing?.sourceDocumentId,
+                visitId = existing?.visitId,
+            ).also(session::saveTask)
         } catch (failure: Exception) {
-            logCareSessionError("Could not save plan item $id.", failure)
+            logCareSessionError("Could not save plan item ${assignedId ?: "(new)"}.", failure)
             error = "Could not save this plan item."
             savedNotice = null
+            return
         }
+        error = null
+        savedNotice = "Saved · plan item ID ${updated.id} kept."
+        onSaved(updated.id, parsedDate)
     }
 
     Column(
