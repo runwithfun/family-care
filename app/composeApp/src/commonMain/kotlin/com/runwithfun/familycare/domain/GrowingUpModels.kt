@@ -18,6 +18,15 @@ enum class AgeStage {
         }
 }
 
+internal fun suggestedAgeStage(birthDate: CareDate?, asOf: CareDate): AgeStage? {
+    val months = birthDate?.let(asOf::completedMonthsSince) ?: return null
+    return when (months) {
+        in 0..1 -> AgeStage.NEWBORN_0_2_MONTHS
+        in 2..3 -> AgeStage.INFANT_2_4_MONTHS
+        else -> null
+    }
+}
+
 data class GrowingObservation(
     val id: String,
     val personId: String,

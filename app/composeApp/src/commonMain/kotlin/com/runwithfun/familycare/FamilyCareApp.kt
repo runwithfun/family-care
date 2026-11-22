@@ -122,9 +122,8 @@ fun FamilyCareApp() {
 @Composable
 private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileState) {
     val photo = rememberFamilyProfilePhoto(profile.photoBytes)
-    val birthDate = profile.birthDate ?: CareDate(2026, 9, 28)
-    val plan = remember(profile.childName, birthDate) {
-        DemoFamily.createPlan(profile.childName, birthDate)
+    val plan = remember(profile.childName, profile.birthDate) {
+        DemoFamily.createPlan(profile.childName, profile.birthDate)
     }
     val assistant = rememberAssistantActions(plan)
     val growingNotes = rememberGrowingNotes(plan)

@@ -35,6 +35,7 @@ import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.AgeStage
 import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.FamilyMember
+import com.runwithfun.familycare.domain.suggestedAgeStage
 import com.runwithfun.familycare.growing.GrowingNotes
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.growing_book
@@ -49,13 +50,10 @@ internal fun GrowingUpScreen(
     onOpenActivity: (AgeStage) -> Unit,
     onSaved: () -> Unit,
 ) {
-    var stageKey by rememberSaveable { mutableStateOf(AgeStage.NEWBORN_0_2_MONTHS.name) }
-    val stage = AgeStage.valueOf(stageKey)
+    var selectedStageKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val stage = selectedStageKey?.let(AgeStage::valueOf) ?: suggestedAgeStage(child.birthDate, DemoFamily.today)
     var draftNote by rememberSaveable { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf<String?>(null) }
-    val history = notes.observations(child.id)
-    val stageHistory = notes.observations(child.id, stage)
-    val nextVisit = plan.nextEligibleVisit(child.id, DemoFamily.today)
     val colors = MaterialTheme.colorScheme
 
     Column(
@@ -85,7 +83,7 @@ internal fun GrowingUpScreen(
                 FilterChip(
                     selected = stage == option,
                     onClick = {
-                        stageKey = option.name
+                        selectedStageKey = option.name
                         statusMessage = null
                     },
                     label = { Text("${option.title} · ${option.label}") },
@@ -93,6 +91,14 @@ internal fun GrowingUpScreen(
                 )
             }
         }
+
+        if (stage == null) {
+            Text("Select an age stage to browse observations and activities.", color = colors.onSurfaceVariant)
+            return@Column
+        }
+        val history = notes.observations(child.id)
+        val stageHistory = notes.observations(child.id, stage)
+        val nextVisit = plan.nextEligibleVisit(child.id, DemoFamily.today)
 
         HorizontalDivider()
         Text("Observations · ${stage.label}", style = MaterialTheme.typography.titleMedium)

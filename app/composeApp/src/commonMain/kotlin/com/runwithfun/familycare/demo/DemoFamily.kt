@@ -42,11 +42,15 @@ object DemoFamily {
         "Fictional clinic note for demonstration. Follow-up booked at 14:30. " +
             "Bring any questions about your recovery."
 
-    fun immunizationPdfBody(childName: String = "Maya"): String =
+    fun immunizationPdfBody(
+        childName: String = "Maya",
+        birthDate: CareDate? = CareDate(2026, 9, 28),
+    ): String =
         """
         Example Family Clinic — Immunization record (synthetic demo PDF)
         Patient: $childName
-        Date of birth: 2026-09-28
+        Date of birth: ${birthDate ?: "Not provided"}
+        Immunization dates below are fixed demo values.
 
         Documented doses on this copy:
         Example immunization A: $immunizationDate
@@ -116,7 +120,7 @@ object DemoFamily {
 
     fun createPlan(
         childName: String = "Maya",
-        birthDate: CareDate = CareDate(2026, 9, 28),
+        birthDate: CareDate? = CareDate(2026, 9, 28),
     ): CarePlan = CarePlan(
         people = listOf(
             FamilyMember(motherId, "Aoife", FamilyRole.MOTHER),

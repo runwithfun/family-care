@@ -60,6 +60,16 @@ class FamilyProfileStateTest {
     }
 
     @Test
+    fun previousColonFormatRestoresAnUnknownBirthDate() {
+        val restored = assertNotNull(FamilyProfileState(TestStore("TWF5YQ==:AQID")).profile)
+
+        assertEquals("Maya", restored.childName)
+        assertNull(restored.birthDate)
+        assertEquals("", restored.notes)
+        assertContentEquals(byteArrayOf(1, 2, 3), restored.photoBytes)
+    }
+
+    @Test
     fun failedWriteDoesNotPublishUnsavedProfile() {
         val store = TestStore()
         val state = FamilyProfileState(store)
