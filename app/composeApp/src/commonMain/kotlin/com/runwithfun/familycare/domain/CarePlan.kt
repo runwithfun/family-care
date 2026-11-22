@@ -184,6 +184,85 @@ class CarePlan(
         }
     }
 
+    // Earliest planned or booked visit for this person on or after [onOrAfter], or null when none.
+    fun nextEligibleVisit(personId: String, onOrAfter: CareDate): Visit? =
+        eventsById.load().values
+            .filterIsInstance<Visit>()
+            .filter { it.personId == personId }
+            .filter { it.status == VisitStatus.PLANNED || it.status == VisitStatus.BOOKED }
+            .filter { it.date.toString() >= onOrAfter.toString() }
+            .minWithOrNull(
+                compareBy<Visit> { it.date.toString() }
+                    .thenBy { it.time == null }
+                    .thenBy { it.time }
+                    .thenBy { it.id },
+            )
+
+    /**
+     * Saves the observation and, when a next eligible visit exists, its discussion task
+     * as one logical write. Retries with the same IDs are no-ops. If no visit is eligible,
+     * only the observation is stored.
+     */
+    fun recordGrowingObservation(observation: GrowingObservation): GrowingObservation {
+        val visit = observation.forVisitId?.let { event(it) as? Visit }
+            ?: nextEligibleVisit(observation.personId, observation.recordedOn)
+        val linked = observation.copy(forVisitId = visit?.id)
+        val discussion = visit?.let { discussionTaskFor(linked, it) }
+
+        while (true) {
+            val currentObservations = observationsById.load()
+            val currentEvents = eventsById.load()
+            val previousObservation = currentObservations[linked.id]
+            if (previousObservation != null) {
+                require(previousObservation == linked) {
+                    "Observation ID already exists with different details: ${linked.id}"
+                }
+                if (discussion != null) {
+                    val previousDiscussion = currentEvents[discussion.id]
+                    require(previousDiscussion == null || previousDiscussion == discussion) {
+                        "Discussion task ID already exists with different details: ${discussion.id}"
+                    }
+                }
+                return linked
+            }
+
+            var nextEvents = currentEvents
+            if (discussion != null) {
+                val previousDiscussion = currentEvents[discussion.id]
+                if (previousDiscussion != null) {
+                    require(previousDiscussion == discussion) {
+                        "Discussion task ID already exists with different details: ${discussion.id}"
+                    }
+                } else {
+                    nextEvents = currentEvents + (discussion.id to discussion)
+                    validateEvent(discussion, nextEvents)
+                }
+            }
+            validateObservation(linked, nextEvents)
+
+            val nextObservations = currentObservations + (linked.id to linked)
+            if (!observationsById.compareAndSet(currentObservations, nextObservations)) continue
+            if (nextEvents === currentEvents || eventsById.compareAndSet(currentEvents, nextEvents)) {
+                return linked
+            }
+            // Roll the observation back so a failed task write does not leave a partial save.
+            observationsById.compareAndSet(nextObservations, currentObservations)
+        }
+    }
+
+    private fun discussionTaskFor(observation: GrowingObservation, visit: Visit): Task {
+        val trimmed = observation.note.trim().replace('\n', ' ')
+        val body = if (trimmed.length <= 48) trimmed else trimmed.take(45).trimEnd() + "…"
+        return Task(
+            id = "discuss-${observation.id}",
+            personId = observation.personId,
+            title = "Discuss: $body",
+            date = visit.date,
+            status = TaskStatus.OPEN,
+            visitId = visit.id,
+        )
+    }
+
     private fun validateEvent(event: CareEvent, events: Map<String, CareEvent>) {
         require(event.id.isNotBlank()) { "Event ID must not be blank" }
         require(event.personId in peopleById) { "Unknown event owner: ${event.personId}" }

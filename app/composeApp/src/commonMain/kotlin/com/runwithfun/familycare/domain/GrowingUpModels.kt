@@ -33,4 +33,6 @@ data class ReviewedActivity(
     val title: String,
     val summary: String,
     val steps: List<String>,
+    val sourceLabel: String,
+    val sourceUrl: String,
 )
