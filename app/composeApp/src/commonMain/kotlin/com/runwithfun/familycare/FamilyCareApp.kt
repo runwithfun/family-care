@@ -73,6 +73,14 @@ fun FamilyCareApp() {
     var tab by remember { mutableStateOf(AppTab.HOME) }
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
     var day by remember { mutableStateOf(DemoFamily.today) }
+    PlatformBackHandler(enabled = detail != null || tab != AppTab.HOME) {
+        val eventPage = detail as? HomeDetail.Event
+        when {
+            eventPage?.fromCalendar == true -> detail = HomeDetail.Calendar
+            detail != null -> detail = null
+            else -> tab = AppTab.HOME
+        }
+    }
 
     FamilyCareTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
