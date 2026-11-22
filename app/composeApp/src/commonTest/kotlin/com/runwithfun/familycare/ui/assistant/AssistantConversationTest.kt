@@ -14,6 +14,7 @@ import com.runwithfun.familycare.session.CareSession
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -195,6 +196,61 @@ class AssistantConversationTest {
         assertEquals(newer.id, afterEditChat.savedTask?.id)
     }
 
+    @Test
+    fun relaunchRestoresBothTypedThreadsAndSelectionWithoutRepeatingActions() {
+        val stores = Stores()
+        val (chat, session, _) = stores.launch()
+        chat.send("Find the postpartum note\nThanks\t🌿")
+        val citation = chat.latestAnswer().citations.single()
+        chat.send("Draft a question for my clinician")
+        assertIs<AssistantReply.ChooseVisit>(chat.turns.last().reply)
+        val motherTurns = chat.turns
+
+        chat.selectPerson(DemoFamily.childId)
+        val childVisit = chat.visits.single()
+        chat.selectVisit(childVisit.id)
+        chat.send("Find the original record")
+        assertIs<AssistantReply.ImportRecord>(chat.turns.single().reply)
+        val childTurns = chat.turns
+        val originalAgenda = session.eventsOn(DemoFamily.today)
+
+        val (restored, reopenedSession, records) = stores.launch()
+        assertEquals(DemoFamily.childId, restored.personId)
+        assertEquals(childVisit.id, restored.visitId)
+        assertEquals(childTurns, restored.turns)
+        assertFalse(records.isPdfImported())
+
+        restored.selectPerson(DemoFamily.motherId)
+        assertNull(restored.visitId)
+        assertEquals(motherTurns, restored.turns)
+        assertNotNull(restored.openOriginal(citation))
+        assertNull(restored.proposal)
+        assertEquals(originalAgenda, reopenedSession.eventsOn(DemoFamily.today))
+    }
+
+    @Test
+    fun aLegacyProposalRestoresItsVisitAndAStoredClearKeepsItStale() {
+        val stores = Stores()
+        val (chat, _, _) = stores.launch()
+        val visit = chat.visits.single()
+        chat.selectVisit(visit.id)
+        chat.send("Draft a question for my clinician")
+        val draft = assertNotNull(chat.proposal)
+        stores.removeHistory(DemoFamily.motherId)
+
+        val (migrated, _, _) = stores.launch()
+        assertEquals(visit.id, migrated.visitId)
+        assertEquals(draft, migrated.proposal)
+        assertTrue(migrated.turns.isEmpty())
+        migrated.selectVisit(null)
+
+        val (restored, session, _) = stores.launch()
+        assertNull(restored.visitId)
+        assertTrue(restored.proposalNeedsReview)
+        assertEquals(ConfirmQuestionResult.STALE_PROPOSAL, restored.confirm(draft.id, draft.revision))
+        assertNull(session.event(draft.id))
+    }
+
     private fun AssistantConversation.latestAnswer(): AssistantReply.Answer =
         assertIs<AssistantReply.Answer>(turns.last().reply)
 
@@ -209,6 +265,8 @@ class AssistantConversationTest {
                 this.value = value
             }
         }
+
+        fun removeHistory(personId: String) = recordsStore.write(assistantHistoryKey(personId), null)
 
         fun launch(childName: String = "Maya"): Triple<AssistantConversation, CareSession, RecordsController> {
             val plan = DemoFamily.createPlan(childName)

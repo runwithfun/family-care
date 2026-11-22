@@ -62,13 +62,16 @@ import com.runwithfun.familycare.domain.FamilyRole
 import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.records.RecordPdfPreview
+import com.runwithfun.familycare.records.RecordsController
 import com.runwithfun.familycare.records.RetrievedOriginal
+import com.runwithfun.familycare.records.rememberRecordImportAction
 import com.runwithfun.familycare.ui.home.monthAndDay
 
 @Composable
 internal fun LocalAssistantScreen(
     actions: AssistantActions,
     conversation: AssistantConversation,
+    records: RecordsController,
     onSaved: () -> Unit,
     onOpenCalendar: () -> Unit,
     onOpenTask: (Task) -> Unit,
@@ -100,6 +103,10 @@ internal fun LocalAssistantScreen(
 
     fun openCitation(citation: AssistantCitation) {
         conversation.openOriginal(citation)?.let { source = OpenedCitation(citation, it) }
+    }
+
+    val addPdf = rememberRecordImportAction(records) { owner, _ ->
+        if (owner == conversation.personId) sendPrompt("Find the original record")
     }
 
     LaunchedEffect(personId, turns.size, proposal?.id, savedTask?.id) {
@@ -134,7 +141,11 @@ internal fun LocalAssistantScreen(
                     showImmunizations = isChild,
                     draftPrompt = draftPrompt,
                     onPrompt = ::sendPrompt,
+                    onAddPdf = { addPdf(personId) },
                 )
+                records.errorMessage?.let { message ->
+                    Text(message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                }
             }
             items(turns) { turn ->
                 ConversationTurn(
@@ -198,6 +209,7 @@ internal fun LocalAssistantScreen(
             fileName = opened.citation.sourceLabel(),
             originalText = opened.original.textPreview,
             pdfBytes = opened.original.pdfBytes,
+            pdfPage = opened.citation.page ?: 1,
             onClose = { source = null },
         )
     }
@@ -263,7 +275,12 @@ private fun ConversationScope(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PromptShortcuts(showImmunizations: Boolean, draftPrompt: String, onPrompt: (String) -> Unit) {
+private fun PromptShortcuts(
+    showImmunizations: Boolean,
+    draftPrompt: String,
+    onPrompt: (String) -> Unit,
+    onAddPdf: () -> Unit,
+) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         AssistChip(
             onClick = { onPrompt("Find the original record") },
@@ -277,6 +294,7 @@ private fun PromptShortcuts(showImmunizations: Boolean, draftPrompt: String, onP
             onClick = { onPrompt(draftPrompt) },
             label = { Text("Draft a question") },
         )
+        AssistChip(onClick = onAddPdf, label = { Text("Add a PDF") })
         if (showImmunizations) {
             AssistChip(
                 onClick = { onPrompt("What is the missing immunization date?") },
@@ -430,7 +448,7 @@ private fun SavedQuestion(task: Task, personLabel: String, onOpen: () -> Unit) {
 private fun CitationCard(citation: AssistantCitation, onOpen: () -> Unit) {
     SourceExcerpt(
         sourceLabel = citation.sourceLabel(),
-        excerpt = citation.quote,
+        excerpt = citation.quote.takeIf { it.isNotBlank() },
         openLabel = "Open original",
         onOpen = onOpen,
     )
@@ -494,6 +512,7 @@ private fun OriginalRecordDialog(
     fileName: String?,
     originalText: String?,
     pdfBytes: ByteArray? = null,
+    pdfPage: Int = 1,
     onClose: () -> Unit,
 ) {
     AlertDialog(
@@ -511,7 +530,7 @@ private fun OriginalRecordDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                pdfBytes?.let { RecordPdfPreview(it, Modifier.fillMaxWidth()) }
+                pdfBytes?.let { RecordPdfPreview(it, Modifier.fillMaxWidth(), page = pdfPage) }
                 originalText?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
             }
         },

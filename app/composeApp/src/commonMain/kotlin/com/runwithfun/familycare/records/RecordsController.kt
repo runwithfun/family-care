@@ -29,14 +29,16 @@ data class RetrievedOriginal(
     val isPdf: Boolean,
     val textPreview: String?,
     val pdfBytes: ByteArray? = null,
+    val contentHash: String? = null,
 )
 
-class RecordsController(
+class RecordsController internal constructor(
     val plan: CarePlan,
     private val files: DocumentFileStore,
     private val reviews: DocumentReviewStore,
     private val pdfBodyText: String = DemoFamily.immunizationPdfBody(),
     private val saveTask: (Task) -> Unit = plan::addEvent,
+    private val importedRecords: ImportedRecords? = null,
 ) {
     var revision by mutableIntStateOf(0)
         private set
@@ -63,6 +65,24 @@ class RecordsController(
     fun document(id: String): CareDocument? {
         revision
         return plan.document(id)
+    }
+
+    internal fun latestImportedDocument(personId: String): CareDocument? =
+        importedRecords?.latestDocumentId(personId)?.let(::document)
+
+    internal fun completeLocalPdfImport(personId: String, result: Result<LocalRecordPdf?>): String? {
+        return try {
+            val picked = result.getOrThrow() ?: return null
+            val importer = checkNotNull(importedRecords) { "The local PDF store is unavailable." }
+            val id = importer.importPdf(plan, personId, picked)
+            openedOriginal = null
+            clearFailure()
+            bump()
+            id
+        } catch (error: Exception) {
+            reportFailure("import a PDF for $personId", error)
+            null
+        }
     }
 
     fun isPdfImported(documentId: String = DemoFamily.immunizationDocumentId): Boolean {
@@ -113,6 +133,21 @@ class RecordsController(
     internal fun readOriginal(documentId: String): RetrievedOriginal {
         val document = plan.document(documentId) ?: error("Unknown document: $documentId")
         return when (val content = document.original.content) {
+            is OriginalContent.ImportedPdf -> {
+                val files = checkNotNull(importedRecords) { "The local PDF store is unavailable." }
+                val bytes = files.read(content.sha256)
+                RetrievedOriginal(
+                    documentId = document.id,
+                    fileName = document.original.fileName,
+                    mediaType = document.original.mediaType,
+                    storageKey = null,
+                    byteSize = bytes.size,
+                    isPdf = true,
+                    textPreview = null,
+                    pdfBytes = bytes,
+                    contentHash = content.sha256,
+                )
+            }
             is OriginalContent.Text -> RetrievedOriginal(
                 documentId = document.id,
                 fileName = document.original.fileName,
@@ -267,12 +302,16 @@ class RecordsController(
 }
 
 @Composable
-fun rememberRecordsController(plan: CarePlan, saveTask: (Task) -> Unit): RecordsController {
+internal fun rememberRecordsController(
+    plan: CarePlan,
+    saveTask: (Task) -> Unit,
+    importedRecords: ImportedRecords,
+): RecordsController {
     val files = rememberDocumentFileStore()
     val reviews = rememberDocumentReviewStore()
-    return remember(plan, files, reviews, saveTask) {
+    return remember(plan, files, reviews, saveTask, importedRecords) {
         val child = plan.people.firstOrNull { it.id == DemoFamily.childId }
         val pdfBody = DemoFamily.immunizationPdfBody(child?.displayName ?: DemoFamily.childName, child?.birthDate)
-        RecordsController(plan, files, reviews, pdfBody, saveTask)
+        RecordsController(plan, files, reviews, pdfBody, saveTask, importedRecords)
     }
 }

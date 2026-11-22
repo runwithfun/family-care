@@ -81,7 +81,7 @@ internal sealed interface AssistantToolResult {
     ) : AssistantToolResult
 }
 
-/** Reads only the selected person's agenda and indexed demo sources. */
+/** Reads only the selected person's agenda and indexed sources. */
 internal class AssistantTools(
     private val session: CareSession,
     private val records: RecordsController,
@@ -90,7 +90,7 @@ internal class AssistantTools(
         session.plan.appointments(personId).mapNotNull { (session.event(it.id) as? Visit)?.takeIf(Visit::isOpen) }
 
     internal fun run(scope: AssistantScope, intent: AssistantIntent): AssistantToolResult = when (intent) {
-        is AssistantIntent.FindRecord -> withRecord(scope, intent.record) { record ->
+        is AssistantIntent.FindRecord -> withRecord(scope, intent.record, preferLocalPdf = true) { record ->
             reply(record.summary, listOf(record.citation))
         }
         AssistantIntent.PrepareVisit -> {
@@ -140,9 +140,14 @@ internal class AssistantTools(
     private fun withRecord(
         scope: AssistantScope,
         request: RecordRequest,
+        preferLocalPdf: Boolean = false,
         onRead: (AssistantRecord) -> AssistantToolResult,
     ): AssistantToolResult {
-        val document = findRecord(scope, request) ?: return reply("I couldn’t find a matching record for this person.")
+        val local = if (preferLocalPdf && request == RecordRequest.DEFAULT) {
+            records.latestImportedDocument(scope.personId)
+        } else null
+        val document = local ?: findRecord(scope, request)
+            ?: return reply("I couldn’t find a matching record for this person.")
         if (document.id == DemoFamily.immunizationDocumentId && !records.isPdfImported(document.id)) {
             return AssistantToolResult.Reply(
                 AssistantReply.ImportRecord("Import the sample immunization PDF to read and cite the original."),
@@ -165,6 +170,14 @@ internal class AssistantTools(
 
     private fun readRecord(document: CareDocument): AssistantRecord? {
         val original = records.readOriginal(document.id)
+        if (original.contentHash != null) {
+            return AssistantRecord(
+                original = original,
+                citation = citation(document, original, quote = "", page = 1, date = null),
+                summary = "Open ${original.fileName} to review the original PDF. Its details have not been confirmed in Records.",
+                question = "Could we review the details in ${original.fileName}?",
+            )
+        }
         return when (document.id) {
             DemoFamily.recoveryDocumentId -> postpartumRecord(document, original)
             DemoFamily.immunizationDocumentId -> immunizationRecord(document, original)
@@ -225,7 +238,8 @@ internal class AssistantTools(
         quote = quote,
         page = page,
         documentDate = date,
-        originalVersion = Base64.encode(original.pdfBytes ?: original.textPreview.orEmpty().encodeToByteArray()),
+        originalVersion = original.contentHash?.let { "sha256:$it" }
+            ?: Base64.encode(original.pdfBytes ?: original.textPreview.orEmpty().encodeToByteArray()),
     )
 
     private fun demoDocumentId(person: FamilyMember): String =
