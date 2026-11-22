@@ -32,8 +32,8 @@ jobs:
         run: |
           test -f dist/index.html
           test -f dist/.nojekyll
-          test -f dist/favicon.svg
-          grep -q '/family-care/' dist/index.html
+          test -f dist/favicon.png
+          grep -Fq 'href="/family-care/favicon.png"' dist/index.html
           ! grep -E 'src="/(src|assets)/' dist/index.html
           ! grep -E 'href="/(src|assets)/' dist/index.html
 
