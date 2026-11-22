@@ -233,11 +233,19 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                                 ActivityPrintScreen(printableStage, child.displayName) { activityStageName = null }
                             }
                         }
-                        AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
-                            session.notifyChanged()
-                            day = assistant.task.date
-                            tabName = AppTab.HOME.name
-                        }
+                        AppTab.ASSISTANT -> LocalAssistantScreen(
+                            actions = assistant,
+                            onSaved = {
+                                session.notifyChanged()
+                                day = assistant.task.date
+                                tabName = AppTab.HOME.name
+                            },
+                            onOpenCalendar = {
+                                day = assistant.visitDate ?: DemoFamily.today
+                                tabName = AppTab.HOME.name
+                                detail = HomeDetail.Calendar
+                            },
+                        )
                     }
                 }
             }

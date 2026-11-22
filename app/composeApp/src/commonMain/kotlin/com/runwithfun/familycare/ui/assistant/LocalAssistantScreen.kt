@@ -43,7 +43,7 @@ import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.ui.home.monthAndDay
 
 @Composable
-fun LocalAssistantScreen(actions: AssistantActions, onSaved: () -> Unit) {
+fun LocalAssistantScreen(actions: AssistantActions, onSaved: () -> Unit, onOpenCalendar: () -> Unit) {
     var showSource by remember(actions) { mutableStateOf(false) }
     val colors = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
@@ -113,6 +113,13 @@ fun LocalAssistantScreen(actions: AssistantActions, onSaved: () -> Unit) {
                         )
                     }
 
+                    if (actions.visitHasChanged) {
+                        Text("The visit has changed. Check its date or status in Calendar.", style = typography.bodyMedium)
+                        TextButton(onClick = onOpenCalendar, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("Open Calendar")
+                        }
+                    }
+
                     if (actions.canConfirm) {
                         val actionModifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         if (actions.confirmed) {
@@ -121,7 +128,7 @@ fun LocalAssistantScreen(actions: AssistantActions, onSaved: () -> Unit) {
                                 modifier = actionModifier,
                                 border = BorderStroke(1.dp, colors.secondary),
                             ) {
-                                Text("View Today")
+                                Text(if (actions.task.date == DemoFamily.today) "View Today" else "View in plan")
                             }
                         } else {
                             Button(
