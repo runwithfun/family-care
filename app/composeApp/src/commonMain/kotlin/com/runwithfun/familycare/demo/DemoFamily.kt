@@ -1,5 +1,6 @@
 package com.runwithfun.familycare.demo
 
+import com.runwithfun.familycare.domain.AgeStage
 import com.runwithfun.familycare.domain.AssistantProposal
 import com.runwithfun.familycare.domain.CareDate
 import com.runwithfun.familycare.domain.CareDocument
@@ -12,9 +13,11 @@ import com.runwithfun.familycare.domain.ExtractedValue
 import com.runwithfun.familycare.domain.FamilyMember
 import com.runwithfun.familycare.domain.FamilyRole
 import com.runwithfun.familycare.domain.FieldReview
+import com.runwithfun.familycare.domain.GrowingObservation
 import com.runwithfun.familycare.domain.ImmunizationReference
 import com.runwithfun.familycare.domain.OriginalContent
 import com.runwithfun.familycare.domain.RecordedImmunization
+import com.runwithfun.familycare.domain.ReviewedActivity
 import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.domain.VisitStatus
@@ -22,12 +25,61 @@ import com.runwithfun.familycare.domain.VisitStatus
 object DemoFamily {
     const val motherId = "demo-mother"
     const val childId = "demo-child"
+    const val childVisitId = "demo-child-visit"
     val today = CareDate(2026, 11, 23)
 
     private const val recoveryVisitId = "demo-recovery-visit"
     private const val recoveryDocumentId = "demo-recovery-note"
     private const val immunizationDocumentId = "demo-immunizations"
     private val immunizationDate = CareDate(2026, 11, 2)
+
+    val newbornObservation = GrowingObservation(
+        id = "demo-obs-newborn-lift",
+        personId = childId,
+        stage = AgeStage.NEWBORN_0_2_MONTHS,
+        note = "Holds head up briefly during supervised tummy time.",
+        recordedOn = CareDate(2026, 10, 20),
+    )
+
+    val infantObservation = GrowingObservation(
+        id = "demo-obs-infant-reach",
+        personId = childId,
+        stage = AgeStage.INFANT_2_4_MONTHS,
+        note = "Reaches toward a soft rattle held nearby.",
+        recordedOn = CareDate(2026, 11, 18),
+        forVisitId = childVisitId,
+    )
+
+    val tummyTimeActivity = ReviewedActivity(
+        id = "demo-activity-tummy-time",
+        stage = AgeStage.NEWBORN_0_2_MONTHS,
+        title = "Supervised tummy time",
+        summary = "A short, reviewed practice sheet for the newborn stage. " +
+            "Use a firm surface and stay with Maya the whole time.",
+        steps = listOf(
+            "Place Maya on her tummy for 2–3 minutes while she is awake and calm.",
+            "Get down to eye level and talk or sing so she lifts her head toward your voice.",
+            "Stop when she looks tired, then try again later the same day.",
+            "Write one observation to discuss at the next well-baby visit.",
+        ),
+    )
+
+    fun reviewedActivity(stage: AgeStage): ReviewedActivity = when (stage) {
+        AgeStage.NEWBORN_0_2_MONTHS -> tummyTimeActivity
+        AgeStage.INFANT_2_4_MONTHS -> ReviewedActivity(
+            id = "demo-activity-reach-and-grasp",
+            stage = AgeStage.INFANT_2_4_MONTHS,
+            title = "Reach and grasp play",
+            summary = "A short, reviewed practice sheet for the early-infant stage. " +
+                "Offer one soft toy at a time within easy reach.",
+            steps = listOf(
+                "Sit Maya supported on your lap facing a soft rattle.",
+                "Hold the rattle just within reach and wait for her to move toward it.",
+                "Celebrate any reach or grasp, then rest before another short round.",
+                "Save an observation if you want to bring it up at the next visit.",
+            ),
+        )
+    }
 
     val recoveryQuestion = AssistantProposal(
         Task(
@@ -47,7 +99,7 @@ object DemoFamily {
         ),
         events = listOf(
             Visit(
-                id = "demo-child-visit",
+                id = childVisitId,
                 personId = childId,
                 title = "Well-baby visit",
                 date = today,
@@ -136,5 +188,6 @@ object DemoFamily {
                 "https://www2.hse.ie/babies-children/vaccines-your-child/",
             ),
         ),
+        observations = listOf(newbornObservation, infantObservation),
     )
 }
