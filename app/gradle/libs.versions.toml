@@ -6,6 +6,7 @@ activityCompose = "1.9.3"
 
 [libraries]
 androidx-activityCompose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+compose-icons = { module = "org.jetbrains.compose.material:material-icons-core", version = "1.7.3" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
