@@ -43,13 +43,16 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
+import com.runwithfun.familycare.domain.AgeStage
 import com.runwithfun.familycare.domain.CareEvent
 import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.FamilyRole
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.care_intro
+import com.runwithfun.familycare.ui.ActivityPrintScreen
 import com.runwithfun.familycare.ui.FamilyCareTheme
+import com.runwithfun.familycare.ui.GrowingUpScreen
 import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
 import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
 import com.runwithfun.familycare.ui.home.HomeScreen
@@ -108,9 +111,12 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
     var tab by remember { mutableStateOf(AppTab.HOME) }
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
     var day by remember { mutableStateOf(DemoFamily.today) }
-    PlatformBackHandler(enabled = detail != null || tab != AppTab.HOME) {
+    var growingStage by remember { mutableStateOf(AgeStage.NEWBORN_0_2_MONTHS) }
+    var growingActivityOpen by remember { mutableStateOf(false) }
+    PlatformBackHandler(enabled = detail != null || growingActivityOpen || tab != AppTab.HOME) {
         val eventPage = detail as? HomeDetail.Event
         when {
+            growingActivityOpen -> growingActivityOpen = false
             eventPage?.fromCalendar == true -> detail = HomeDetail.Calendar
             detail != null -> detail = null
             else -> tab = AppTab.HOME
@@ -160,9 +166,22 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                                 Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
                             }
                         }
-                        AppTab.GROWING_UP -> Page("Growing up") {
-                            Text(child.displayName, style = MaterialTheme.typography.titleMedium)
-                            child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
+                        AppTab.GROWING_UP -> {
+                            if (growingActivityOpen) {
+                                ActivityPrintScreen(
+                                    stage = growingStage,
+                                    childName = child.displayName,
+                                    onBack = { growingActivityOpen = false },
+                                )
+                            } else {
+                                GrowingUpScreen(
+                                    plan = plan,
+                                    child = child,
+                                    stage = growingStage,
+                                    onStageChange = { growingStage = it },
+                                    onOpenActivity = { growingActivityOpen = true },
+                                )
+                            }
                         }
                         AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
                             day = assistant.task.date
@@ -176,6 +195,7 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                 onSelect = {
                     tab = it
                     detail = null
+                    growingActivityOpen = false
                 },
             )
         }
