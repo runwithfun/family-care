@@ -50,6 +50,7 @@ import com.runwithfun.familycare.domain.AgeStage
 import com.runwithfun.familycare.domain.CareDate
 import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
+import com.runwithfun.familycare.growing.rememberGrowingNotes
 import com.runwithfun.familycare.records.RecordsScreen
 import com.runwithfun.familycare.records.rememberRecordsController
 import com.runwithfun.familycare.resources.Res
@@ -113,12 +114,14 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
     val photo = rememberFamilyProfilePhoto(photoBytes)
     val plan = remember(childName) { DemoFamily.createPlan(childName) }
     val assistant = rememberAssistantActions(plan)
+    val growingNotes = rememberGrowingNotes(plan)
     val session = rememberCareSession(plan)
-    val records = rememberRecordsController(plan)
+    val records = rememberRecordsController(plan, saveTask = session::saveTask)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
     var tabName by rememberSaveable { mutableStateOf(AppTab.HOME.name) }
     val tab = AppTab.valueOf(tabName)
+    var recordId by rememberSaveable { mutableStateOf<String?>(null) }
     var activityStageName by rememberSaveable { mutableStateOf<String?>(null) }
     val growingState = rememberSaveableStateHolder()
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
@@ -128,10 +131,10 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
             is HomeDetail.VisitEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
             is HomeDetail.TaskEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
             HomeDetail.Calendar, HomeDetail.Profile -> detail = null
-            null -> if (activityStageName != null) {
-                activityStageName = null
-            } else {
-                tabName = AppTab.HOME.name
+            null -> when {
+                activityStageName != null -> activityStageName = null
+                tab == AppTab.RECORDS && recordId != null -> recordId = null
+                else -> tabName = AppTab.HOME.name
             }
         }
     }
@@ -207,12 +210,24 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                                 }
                             },
                         )
-                        AppTab.RECORDS -> RecordsScreen(records = records, people = people)
+                        AppTab.RECORDS -> RecordsScreen(
+                            records = records,
+                            people = people,
+                            selectedDocumentId = recordId,
+                            onSelectDocument = { recordId = it },
+                            onOpenTask = { detail = HomeDetail.TaskEditor(it.id, it.date, fromCalendar = false) },
+                        )
                         AppTab.GROWING_UP -> {
                             val printableStage = activityStageName?.let(AgeStage::valueOf)
                             if (printableStage == null) {
                                 growingState.SaveableStateProvider("growing-up") {
-                                    GrowingUpScreen(plan = plan, onOpenActivity = { activityStageName = it.name })
+                                    GrowingUpScreen(
+                                        plan = plan,
+                                        child = child,
+                                        notes = growingNotes,
+                                        onOpenActivity = { activityStageName = it.name },
+                                        onSaved = session::notifyChanged,
+                                    )
                                 }
                             } else {
                                 ActivityPrintScreen(printableStage, child.displayName) { activityStageName = null }

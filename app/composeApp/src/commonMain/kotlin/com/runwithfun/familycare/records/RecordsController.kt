@@ -35,6 +35,7 @@ class RecordsController(
     private val files: DocumentFileStore,
     private val reviews: DocumentReviewStore,
     private val pdfBodyText: String = DemoFamily.immunizationPdfBody(),
+    private val saveTask: (Task) -> Unit = plan::addEvent,
 ) {
     var revision by mutableIntStateOf(0)
         private set
@@ -172,20 +173,29 @@ class RecordsController(
         return plan.openTasksForDocument(documentId).firstOrNull()
     }
 
-    fun ensureProviderRequest(documentId: String): Task = run {
+    fun ensureProviderRequest(documentId: String): Task? {
         val existing = plan.openTasksForDocument(documentId).firstOrNull()
         if (existing != null) return existing
-        val document = plan.document(documentId) ?: error("Unknown document: $documentId")
-        plan.linkOpenRequestTask(
-            Task(
-                id = "request-$documentId",
+        val taskId = "request-$documentId"
+        (plan.event(taskId) as? Task)?.let { return it }
+        return try {
+            val document = plan.document(documentId) ?: error("Unknown document: $documentId")
+            val request = Task(
+                id = taskId,
                 personId = document.personId,
                 title = "Request a copy of the immunization record",
                 date = DemoFamily.today,
                 status = TaskStatus.OPEN,
                 sourceDocumentId = documentId,
-            ),
-        ).also { bump() }
+            )
+            saveTask(request)
+            clearFailure()
+            bump()
+            request
+        } catch (error: Exception) {
+            reportFailure("save provider request for $documentId", error)
+            null
+        }
     }
 
     fun recordedDoseSnapshot(documentId: String, doseName: String): RecordedImmunization? =
@@ -246,11 +256,11 @@ class RecordsController(
 }
 
 @Composable
-fun rememberRecordsController(plan: CarePlan): RecordsController {
+fun rememberRecordsController(plan: CarePlan, saveTask: (Task) -> Unit): RecordsController {
     val files = rememberDocumentFileStore()
     val reviews = rememberDocumentReviewStore()
     val childName = plan.people.firstOrNull { it.id == DemoFamily.childId }?.displayName ?: "Maya"
-    return remember(plan, files, reviews, childName) {
-        RecordsController(plan, files, reviews, DemoFamily.immunizationPdfBody(childName))
+    return remember(plan, files, reviews, childName, saveTask) {
+        RecordsController(plan, files, reviews, DemoFamily.immunizationPdfBody(childName), saveTask)
     }
 }

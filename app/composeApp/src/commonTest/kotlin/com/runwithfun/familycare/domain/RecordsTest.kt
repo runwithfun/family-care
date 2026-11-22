@@ -199,7 +199,7 @@ class RecordsTest {
         val store = InMemoryRecordsLocalStore()
         val records = RecordsController(plan, DocumentFileStore(store), DocumentReviewStore(store))
         assertEquals(existing.id, records.linkExistingProviderRequest(DemoFamily.immunizationDocumentId)?.id)
-        assertEquals(existing.id, records.ensureProviderRequest(DemoFamily.immunizationDocumentId).id)
+        assertEquals(existing.id, records.ensureProviderRequest(DemoFamily.immunizationDocumentId)?.id)
     }
 
     @Test

@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -35,28 +34,28 @@ import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.AgeStage
 import com.runwithfun.familycare.domain.CarePlan
-import com.runwithfun.familycare.domain.GrowingObservation
-import com.runwithfun.familycare.growing.GrowingUpActions
+import com.runwithfun.familycare.domain.FamilyMember
+import com.runwithfun.familycare.growing.GrowingNotes
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.growing_book
 import com.runwithfun.familycare.ui.home.monthAndDay
 import org.jetbrains.compose.resources.painterResource
 
 @Composable
-fun GrowingUpScreen(
+internal fun GrowingUpScreen(
     plan: CarePlan,
+    child: FamilyMember,
+    notes: GrowingNotes,
     onOpenActivity: (AgeStage) -> Unit,
-    onBack: (() -> Unit)? = null,
+    onSaved: () -> Unit,
 ) {
     var stageKey by rememberSaveable { mutableStateOf(AgeStage.NEWBORN_0_2_MONTHS.name) }
     val stage = AgeStage.valueOf(stageKey)
     var draftNote by rememberSaveable { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf<String?>(null) }
-    var historyTick by remember { mutableIntStateOf(0) }
-    historyTick
-    val child = plan.people.first { it.id == DemoFamily.childId }
-    val history = plan.observations(DemoFamily.childId)
-    val stageHistory = plan.observations(DemoFamily.childId, stage)
+    val history = notes.observations(child.id)
+    val stageHistory = notes.observations(child.id, stage)
+    val nextVisit = plan.nextEligibleVisit(child.id, DemoFamily.today)
     val colors = MaterialTheme.colorScheme
 
     Column(
@@ -66,9 +65,6 @@ fun GrowingUpScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        if (onBack != null) {
-            TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -126,31 +122,30 @@ fun GrowingUpScreen(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("New observation") },
             supportingText = {
-                Text("Saved as a discussion point for today's well-baby visit.")
+                Text(
+                    if (nextVisit == null) "You can save this note for later."
+                    else "Save a discussion point for the next visit.",
+                )
             },
         )
         Button(
             onClick = {
-                val note = draftNote.trim()
-                if (note.isEmpty()) {
-                    statusMessage = "Enter a short observation before saving."
-                    return@Button
+                try {
+                    val observation = notes.save(child.id, stage, draftNote, DemoFamily.today)
+                    draftNote = ""
+                    statusMessage = if (observation.forVisitId == null) {
+                        "Observation saved."
+                    } else {
+                        "Saved with a discussion point for the next visit."
+                    }
+                    onSaved()
+                } catch (_: Exception) {
+                    statusMessage = "Could not save this observation. Try again."
                 }
-                val observation = GrowingObservation(
-                    id = "local-obs-${historyTick + history.size + 1}",
-                    personId = DemoFamily.childId,
-                    stage = stage,
-                    note = note,
-                    recordedOn = DemoFamily.today,
-                    forVisitId = DemoFamily.childVisitId,
-                )
-                GrowingUpActions.saveObservation(plan, observation)
-                draftNote = ""
-                historyTick++
-                statusMessage = "Saved for the next visit discussion."
             },
+            enabled = draftNote.isNotBlank(),
         ) {
-            Text("Save for next visit")
+            Text("Save observation")
         }
         statusMessage?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium)
@@ -163,7 +158,11 @@ fun GrowingUpScreen(
         ) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("Printable activity", style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
-                Text(DemoFamily.reviewedActivity(stage).title, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    DemoFamily.reviewedActivity(stage).title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = colors.onSurface,
+                )
                 TextButton(onClick = { onOpenActivity(stage) }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Open activity")
                 }

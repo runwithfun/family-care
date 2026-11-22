@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -24,6 +25,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.CareDocument
@@ -45,21 +48,20 @@ private val NarrowWidth = 600.dp
 fun RecordsScreen(
     records: RecordsController,
     people: Map<String, FamilyMember>,
+    selectedDocumentId: String?,
+    onSelectDocument: (String?) -> Unit,
+    onOpenTask: (Task) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedDocumentId by remember { mutableStateOf<String?>(null) }
     val selected = selectedDocumentId?.let { records.document(it) }
 
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Records", style = MaterialTheme.typography.headlineSmall)
-        Text(
-            "Clinic documents stay on this device. Import the synthetic PDF, reopen the stored original, " +
-                "and review extracted fields without guessing missing vaccine status.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
+        if (selected == null) {
+            Text("Records", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineLarge)
+        }
 
         records.errorMessage?.let { message ->
             Surface(
@@ -80,14 +82,15 @@ fun RecordsScreen(
             RecordsOverview(
                 records = records,
                 people = people,
-                onOpenDocument = { selectedDocumentId = it },
+                onOpenDocument = { onSelectDocument(it) },
             )
         } else {
             DocumentDetail(
                 records = records,
                 document = selected,
                 person = people.getValue(selected.personId),
-                onBack = { selectedDocumentId = null },
+                onBack = { onSelectDocument(null) },
+                onOpenTask = onOpenTask,
             )
         }
     }
@@ -210,6 +213,7 @@ private fun DocumentDetail(
     document: CareDocument,
     person: FamilyMember,
     onBack: () -> Unit,
+    onOpenTask: (Task) -> Unit,
 ) {
     // Observe controller revision so Save refreshes field state.
     records.revision
@@ -218,9 +222,13 @@ private fun DocumentDetail(
     TextButton(onClick = onBack) {
         Text("Back to records")
     }
-    Text(current.original.fileName, style = MaterialTheme.typography.titleLarge)
     Text(
-        "${kindLabel(current.kind)} · ${person.displayName} · ${current.original.mediaType}",
+        kindLabel(current.kind),
+        modifier = Modifier.semantics { heading() },
+        style = MaterialTheme.typography.headlineLarge,
+    )
+    Text(
+        "${person.displayName} · ${current.original.fileName}",
         style = MaterialTheme.typography.bodyMedium,
     )
 
@@ -256,10 +264,10 @@ private fun DocumentDetail(
                 Text(message, style = MaterialTheme.typography.bodyMedium)
                 val linked = records.linkExistingProviderRequest(current.id)
                 if (linked != null) {
-                    Text("Open request: ${linked.title}", style = MaterialTheme.typography.bodyMedium)
+                    TextButton(onClick = { onOpenTask(linked) }) { Text("View provider request") }
                 } else {
-                    OutlinedButton(onClick = { records.ensureProviderRequest(current.id) }) {
-                        Text("Link provider request")
+                    OutlinedButton(onClick = { records.ensureProviderRequest(current.id)?.let(onOpenTask) }) {
+                        Text("Add provider request")
                     }
                 }
             }
