@@ -1,5 +1,6 @@
 package com.runwithfun.familycare.records
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,15 +8,23 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -28,9 +37,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.CareDocument
@@ -48,8 +63,19 @@ import com.runwithfun.familycare.domain.isExplicitlyUnresolved
 import com.runwithfun.familycare.domain.isUntouched
 import com.runwithfun.familycare.domain.providerFollowUpMessage
 import com.runwithfun.familycare.domain.shownValue
+import com.runwithfun.familycare.resources.Res
+import com.runwithfun.familycare.resources.records_appointments_sketch
+import com.runwithfun.familycare.resources.records_documents_sketch
+import com.runwithfun.familycare.resources.records_immunization_sketch
+import com.runwithfun.familycare.resources.records_import_sketch
+import com.runwithfun.familycare.resources.records_references_sketch
+import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.painterResource
 
 private val NarrowWidth = 600.dp
+private val InsetCorner = RoundedCornerShape(12.dp)
+private val HeaderSketchSize = 40.dp
+private val EmptySketchSize = 96.dp
 
 @Composable
 fun RecordsScreen(
@@ -63,8 +89,8 @@ fun RecordsScreen(
     val selected = selectedDocumentId?.let { records.document(it) }
 
     Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         if (selected == null) {
             Text("Records", modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineLarge)
@@ -73,7 +99,7 @@ fun RecordsScreen(
         records.errorMessage?.let { message ->
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
-                shape = MaterialTheme.shapes.small,
+                shape = InsetCorner,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
@@ -112,8 +138,11 @@ private fun RecordsOverview(
 ) {
     var ownerId by rememberSaveable { mutableStateOf(DemoFamily.childId) }
     val addPdf = rememberRecordImportAction(records) { _, documentId -> onOpenDocument(documentId) }
-    SectionTitle("Add a clinic PDF")
-    Text("Choose who the record belongs to.", style = MaterialTheme.typography.bodyMedium)
+    val ownerDocuments = records.documents().filter { it.personId == ownerId }
+    val ownerImmunizations = records.plan.recordedImmunizations.filter { it.personId == ownerId }
+    val ownerAppointments = records.plan.appointments().filter { it.personId == ownerId }
+
+    Text("Who these records belong to", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         people.values.forEach { person ->
             FilterChip(
@@ -123,64 +152,233 @@ private fun RecordsOverview(
             )
         }
     }
-    Button(onClick = { addPdf(ownerId) }, enabled = ownerId in people) {
-        Text("Choose PDF")
-    }
-    if (!records.isPdfImported()) {
-        OutlinedButton(onClick = { records.importSyntheticImmunizationPdf() }) {
-            Text("Import synthetic clinic PDF")
-        }
-    } else {
-        Text("Synthetic clinic PDF is stored on this device.", style = MaterialTheme.typography.bodyMedium)
-    }
 
-    SectionTitle("Documents")
-    for (document in records.documents()) {
-        val person = people.getValue(document.personId)
-        DocumentRow(document, person, onClick = { onOpenDocument(document.id) })
-    }
-
-    HorizontalDivider()
-    SectionTitle("Documented immunizations")
-    if (records.plan.recordedImmunizations.isEmpty()) {
-        Text("No documented immunizations yet.", style = MaterialTheme.typography.bodyMedium)
-    } else {
-        for (record in records.plan.recordedImmunizations) {
-            val person = people.getValue(record.personId)
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(record.name, style = MaterialTheme.typography.titleMedium)
+    RecordsSection(
+        title = "Add a clinic PDF",
+        sketch = Res.drawable.records_import_sketch,
+        sketchDescription = "Pencil sketch of a clinic page with a paperclip",
+    ) {
+        InsetGroup {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(
-                    "${person.displayName} · ${record.dateAdministered}",
+                    "Store an original PDF on this device for ${people[ownerId]?.displayName ?: "this person"}.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    "Source snapshot from document (not rewritten by field corrections)",
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                Button(
+                    onClick = { addPdf(ownerId) },
+                    enabled = ownerId in people,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Choose PDF")
+                }
+                if (!records.isPdfImported()) {
+                    OutlinedButton(
+                        onClick = { records.importSyntheticImmunizationPdf() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Import synthetic clinic PDF")
+                    }
+                } else {
+                    Text(
+                        "Synthetic clinic PDF is stored on this device.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
         }
     }
 
-    HorizontalDivider()
-    SectionTitle("Public references")
-    Text(
-        "Schedules from public health sites. These are not your child's record.",
-        style = MaterialTheme.typography.bodyMedium,
-    )
-    for (reference in records.plan.immunizationReferences) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                "${reference.authority} (${reference.jurisdiction})",
-                style = MaterialTheme.typography.titleMedium,
+    RecordsSection(
+        title = "Documents",
+        sketch = Res.drawable.records_documents_sketch,
+        sketchDescription = "Pencil sketch of a folder with a baby footprint",
+    ) {
+        if (ownerDocuments.isEmpty()) {
+            EmptySketchBlock(
+                sketch = Res.drawable.records_documents_sketch,
+                message = "No clinic documents for this person yet.",
             )
-            Text(reference.sourceUrl, style = MaterialTheme.typography.bodySmall)
+        } else {
+            InsetGroup {
+                ownerDocuments.forEachIndexed { index, document ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                    DocumentRow(document, people.getValue(document.personId), onClick = { onOpenDocument(document.id) })
+                }
+            }
         }
     }
 
-    HorizontalDivider()
-    SectionTitle("Appointments")
-    for (visit in records.plan.appointments()) {
-        AppointmentRow(visit, people.getValue(visit.personId))
+    RecordsSection(
+        title = "Immunizations",
+        sketch = Res.drawable.records_immunization_sketch,
+        sketchDescription = "Pencil sketch of a shield with a heart",
+    ) {
+        if (ownerImmunizations.isEmpty()) {
+            EmptySketchBlock(
+                sketch = Res.drawable.records_immunization_sketch,
+                message = "No documented immunizations yet.",
+            )
+        } else {
+            InsetGroup {
+                ownerImmunizations.forEachIndexed { index, record ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(record.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "${people.getValue(record.personId).displayName} · ${record.dateAdministered}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            "Source snapshot from document",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    RecordsSection(
+        title = "Appointments",
+        sketch = Res.drawable.records_appointments_sketch,
+        sketchDescription = "Pencil sketch of a calendar with a heart",
+    ) {
+        if (ownerAppointments.isEmpty()) {
+            EmptySketchBlock(
+                sketch = Res.drawable.records_appointments_sketch,
+                message = "No appointments for this person.",
+            )
+        } else {
+            InsetGroup {
+                ownerAppointments.forEachIndexed { index, visit ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                        )
+                    }
+                    AppointmentRow(visit, people.getValue(visit.personId))
+                }
+            }
+        }
+    }
+
+    RecordsSection(
+        title = "Public references",
+        sketch = Res.drawable.records_references_sketch,
+        sketchDescription = "Pencil sketch of an open booklet",
+    ) {
+        InsetGroup {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "Schedules from public health sites. These are not your child's record.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                records.plan.immunizationReferences.forEachIndexed { index, reference ->
+                    if (index > 0) Spacer(Modifier.height(8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            "${reference.authority} (${reference.jurisdiction})",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            reference.sourceUrl,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordsSection(
+    title: String,
+    sketch: DrawableResource,
+    sketchDescription: String,
+    content: @Composable () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Image(
+                painter = painterResource(sketch),
+                contentDescription = sketchDescription,
+                modifier = Modifier.size(HeaderSketchSize),
+                contentScale = ContentScale.Fit,
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() },
+            )
+        }
+        content()
+    }
+}
+
+@Composable
+private fun InsetGroup(content: @Composable () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        shape = InsetCorner,
+    ) {
+        Column(content = { content() })
+    }
+}
+
+@Composable
+private fun EmptySketchBlock(
+    sketch: DrawableResource,
+    message: String,
+) {
+    InsetGroup {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Image(
+                painter = painterResource(sketch),
+                contentDescription = null,
+                modifier = Modifier.size(EmptySketchSize),
+                contentScale = ContentScale.Fit,
+            )
+            Text(
+                message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -192,26 +390,59 @@ private fun DocumentRow(
 ) {
     val status = when {
         document.isComplete() -> "Complete"
-        document.hasGaps() -> "Needs clinic follow-up"
+        document.hasGaps() -> "Needs follow-up"
         else -> "Ready to review"
     }
-    Surface(
+    val statusTone = when {
+        document.isComplete() -> MaterialTheme.colorScheme.secondaryContainer
+        document.hasGaps() -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.primaryContainer
+    }
+    val statusOnTone = when {
+        document.isComplete() -> MaterialTheme.colorScheme.onSecondaryContainer
+        document.hasGaps() -> MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = MaterialTheme.shapes.small,
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = "${document.original.fileName}, $status"
+            }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "${kindLabel(document.kind)} · ${person.displayName} · $status",
-                style = MaterialTheme.typography.bodyMedium,
+                document.original.fileName,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
+            Text(
+                "${kindLabel(document.kind)} · ${person.displayName}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Surface(color = statusTone, shape = RoundedCornerShape(6.dp)) {
+                Text(
+                    status,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = statusOnTone,
+                )
+            }
         }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -225,9 +456,16 @@ private fun AppointmentRow(visit: Visit, person: FamilyMember) {
         visit.provider,
         visit.status.name.lowercase(),
     ).joinToString(" · ")
-    Column {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         Text(visit.title, style = MaterialTheme.typography.titleMedium)
-        Text(details, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            details,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -255,6 +493,7 @@ private fun DocumentDetail(
     Text(
         "${person.displayName} · ${current.original.fileName}",
         style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     if (isImportedPdf) {
         Text("Original PDF · review the document for details", style = MaterialTheme.typography.bodyMedium)
@@ -283,7 +522,7 @@ private fun DocumentDetail(
     current.providerFollowUpMessage()?.let { message ->
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
-            shape = MaterialTheme.shapes.small,
+            shape = InsetCorner,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(
@@ -310,7 +549,7 @@ private fun DocumentDetail(
 
     val openRequests = records.openRequestTasks(current.id)
     if (openRequests.isNotEmpty()) {
-        SectionTitle("Open follow-ups")
+        Text("Open follow-ups", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         for (task in openRequests) {
             Text("${task.title} · ${task.status.name.lowercase()}", style = MaterialTheme.typography.bodyMedium)
         }
@@ -325,7 +564,7 @@ private fun OriginalPanel(
 ) {
     Column(
         modifier = modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, InsetCorner)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -355,7 +594,7 @@ private fun ExtractedPanel(
 ) {
     Column(
         modifier = modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, InsetCorner)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -420,11 +659,6 @@ private fun FieldEditor(
             }
         }
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleLarge)
 }
 
 private fun kindLabel(kind: DocumentKind): String = when (kind) {
