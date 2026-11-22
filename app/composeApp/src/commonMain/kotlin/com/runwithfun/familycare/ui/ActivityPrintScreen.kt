@@ -54,10 +54,6 @@ fun ActivityPrintScreen(
         HorizontalDivider()
         Text("Source", style = MaterialTheme.typography.titleMedium)
         Text(activity.sourceLabel, style = MaterialTheme.typography.bodyMedium)
-        Text(activity.sourceUrl, style = MaterialTheme.typography.bodySmall)
-        Text(
-            "Print-ready PDF export is handled in the partner native integration.",
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Text(activity.sourceUrl, style = MaterialTheme.typography.bodyMedium)
     }
 }
