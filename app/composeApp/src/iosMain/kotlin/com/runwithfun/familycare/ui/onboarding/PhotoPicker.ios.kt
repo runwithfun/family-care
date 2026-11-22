@@ -112,19 +112,20 @@ private class OnboardingPhotoSession(
         picker.modalInPresentation = false
         picker.presentationController?.delegate = this
         presenter.presentViewController(picker, animated = true) {
-            if (activeRequest === request && controller === picker) {
+            if (activeRequest === request && controller == picker) {
                 picker.presentationController?.delegate = this
             }
         }
     }
 
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
+        println("The iOS profile photo picker returned ${didFinishPicking.size} item(s).")
         val request = activeRequest ?: return
-        if (controller !== picker) return
+        if (controller != picker) return
         if (didFinishPicking.isNotEmpty()) onResult(OnboardingPhotoResult.Loading)
         detachDelegates(picker)
         picker.dismissViewControllerAnimated(true) {
-            if (controller === picker) controller = null
+            if (controller == picker) controller = null
             if (activeRequest === request) readSelection(request, didFinishPicking)
         }
     }
@@ -132,7 +133,7 @@ private class OnboardingPhotoSession(
     override fun presentationControllerDidDismiss(presentationController: UIPresentationController) {
         val request = activeRequest ?: return
         val picker = controller ?: return
-        if (presentationController.presentedViewController !== picker) return
+        if (presentationController.presentedViewController != picker) return
         detachDelegates(picker)
         controller = null
         finish(request, OnboardingPhotoResult.Cancelled)
