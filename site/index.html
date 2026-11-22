@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Family Care is a local mobile demo for a fictional family’s day plan—visits, tasks, and sample records on the device."
+    />
+    <title>Family Care</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="topbar">
+      <a class="topbar__brand" href="#top" aria-label="Family Care home">Family Care</a>
+      <nav class="topbar__nav" aria-label="Primary">
+        <a href="#product">Product</a>
+        <a href="#screens">Previews</a>
+        <a href="#local">On device</a>
+        <a
+          class="topbar__github"
+          href="https://github.com/runwithfun/family-care"
+          rel="noopener noreferrer"
+          >GitHub</a
+        >
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-brand">
+        <div class="hero__media" aria-hidden="true">
+          <img
+            class="hero__image"
+            src="/src/assets/care_intro.jpg"
+            alt=""
+            width="1200"
+            height="1200"
+          />
+        </div>
+        <div class="hero__copy">
+          <p class="hero__brand" id="hero-brand">Family Care</p>
+          <h1 class="hero__headline">A calm day plan for a fictional family’s next visits.</h1>
+          <p class="hero__lede">
+            The starter demo opens Maya’s profile and today’s shared agenda locally—no backend required.
+          </p>
+          <div class="hero__actions">
+            <a class="button button--primary" href="#screens">See the preview screens</a>
+            <a
+              class="button button--ghost"
+              href="https://github.com/runwithfun/family-care"
+              rel="noopener noreferrer"
+              >View the project</a
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--product" id="product" aria-labelledby="product-title">
+        <div class="section__inner">
+          <p class="eyebrow">What the starter shows</p>
+          <h2 id="product-title">One sample day for Maya and Aoife</h2>
+          <p class="section__lede">
+            Family Care opens a fictional child profile and a fixed demo day. The current build lists today’s
+            visits and tasks from a shared in-memory care plan—Maya’s well-baby visit, Aoife’s recovery
+            follow-up, and a task to request an immunization copy.
+          </p>
+          <ul class="feature-list">
+            <li>
+              <strong>Shared demo plan</strong>
+              <span>One care plan instance feeds the starter screen with synthetic people and events.</span>
+            </li>
+            <li>
+              <strong>Clear ownership</strong>
+              <span>Each event belongs to a family member, so “for you” and child visits stay distinct.</span>
+            </li>
+            <li>
+              <strong>Sample records nearby</strong>
+              <span>The demo data also includes visit-summary and immunization notes for that same day.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section--screens" id="screens" aria-labelledby="screens-title">
+        <div class="section__inner">
+          <p class="eyebrow">Preview artwork</p>
+          <h2 id="screens-title">Illustrative screens from the starter day</h2>
+          <p class="section__lede">
+            These frames are previews of the demonstrated scenario—not production screenshots. They sketch
+            Maya’s day plan, the sample documents in the demo data, and a local Assistant proposal tied to
+            Aoife’s recovery note. The full end-to-end flow is verified in issue #11.
+          </p>
+          <div class="screens">
+            <figure class="screen reveal">
+              <img
+                src="/src/assets/screen-day.svg"
+                alt="Preview of a day plan listing Maya’s well-baby visit and related tasks"
+                width="320"
+                height="640"
+              />
+              <figcaption>Day plan preview</figcaption>
+            </figure>
+            <figure class="screen reveal" style="--delay: 80ms">
+              <img
+                src="/src/assets/screen-docs.svg"
+                alt="Preview of sample visit summary and immunization record cards"
+                width="320"
+                height="640"
+              />
+              <figcaption>Records preview</figcaption>
+            </figure>
+            <figure class="screen reveal" style="--delay: 160ms">
+              <img
+                src="/src/assets/screen-assistant.svg"
+                alt="Preview of an Assistant proposal to ask about recovery at today’s visit"
+                width="320"
+                height="640"
+              />
+              <figcaption>Assistant preview</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--local" id="local" aria-labelledby="local-title">
+        <div class="section__inner section__inner--split">
+          <div>
+            <p class="eyebrow">Designed to stay local</p>
+            <h2 id="local-title">The demo runs on the device</h2>
+            <p class="section__lede">
+              The starter app keeps its sample plan in memory and does not call a backend, remote model, or
+              analytics service. GitHub Pages hosts only this static project site.
+            </p>
+          </div>
+          <ul class="local-points">
+            <li>Synthetic identities, dates, and clinic notes only</li>
+            <li>Shared care-plan model for the demo day</li>
+            <li>Public immunization references stay as external links</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section section--cta" aria-labelledby="cta-title">
+        <div class="section__inner">
+          <h2 id="cta-title">Run the starter on a simulator</h2>
+          <p class="section__lede">
+            The shared UI uses Kotlin and Compose Multiplatform. Clone the repository, use JDK 17, and follow the
+            iOS or Android steps in the README.
+          </p>
+          <a
+            class="button button--primary"
+            href="https://github.com/runwithfun/family-care#run-the-demo"
+            rel="noopener noreferrer"
+            >Open the run guide</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p><strong>Family Care</strong> · local family planning demo</p>
+      <p>
+        <a href="https://github.com/runwithfun/family-care" rel="noopener noreferrer">Source on GitHub</a>
+      </p>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

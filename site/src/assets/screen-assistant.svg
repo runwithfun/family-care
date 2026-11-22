@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 640" fill="none" role="img" aria-label="Assistant demo screen">
+  <rect width="320" height="640" rx="40" fill="#163D39"/>
+  <rect x="12" y="12" width="296" height="616" rx="32" fill="#FBFEFD"/>
+  <circle cx="160" cy="28" r="3" fill="#9C566C"/>
+  <text x="28" y="78" fill="#1F4F4A" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14" font-weight="700">Local Assistant</text>
+  <text x="28" y="120" fill="#161616" font-family="Bricolage Grotesque, Georgia, serif" font-size="28" font-weight="700">Proposal</text>
+  <rect x="28" y="152" width="264" height="220" rx="22" fill="#F3D6DE"/>
+  <text x="48" y="196" fill="#161616" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="17" font-weight="700">Ask about recovery</text>
+  <text x="48" y="220" fill="#161616" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="17" font-weight="700">at today's visit</text>
+  <text x="48" y="260" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">Linked to Aoife's visit summary</text>
+  <text x="48" y="286" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14">and the 14:30 follow-up.</text>
+  <rect x="48" y="316" width="120" height="36" rx="18" fill="#1F4F4A"/>
+  <text x="74" y="339" fill="#F7FBFA" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="14" font-weight="700">Confirm</text>
+  <rect x="28" y="400" width="264" height="120" rx="20" fill="#E8F3F0"/>
+  <text x="48" y="444" fill="#161616" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="15" font-weight="700">Writes through the calendar</text>
+  <text x="48" y="472" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="13">Confirmed actions become the same</text>
+  <text x="48" y="494" fill="#5A4A4E" font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-size="13">event operations as manual entries.</text>
+</svg>

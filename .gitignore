@@ -12,3 +12,5 @@ Local.xcconfig
 .env
 .env.*
 !.env.example
+site/node_modules/
+site/dist/

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Family Care">
+  <rect width="64" height="64" rx="16" fill="#FFFDFC"/>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#F3D6DE"/>
+  <circle cx="24" cy="27" r="8" fill="#FFFDFC"/>
+  <circle cx="41" cy="29" r="6" fill="#8A455C"/>
+  <path d="M14 48c2.5-9 10-14 18-14s15.5 5 18 14" fill="none" stroke="#5F2F3F" stroke-width="4" stroke-linecap="round"/>
+</svg>
