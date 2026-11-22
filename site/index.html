@@ -5,163 +5,176 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Family Care brings postpartum follow-ups, child appointments, and records into one day plan. Run the hackathon demo on iOS or Android."
+      content="Family Care keeps postpartum follow-ups, child appointments, and clinic records in one day plan. Explore the iOS and Android simulator demo."
     />
-    <title>Family Care</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#fbf5ee" />
+    <title>Family Care — A day plan for you and your baby</title>
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64" />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
 
-    <header class="topbar">
-      <a class="topbar__brand" href="#top" aria-label="Family Care home">Family Care</a>
-      <nav class="topbar__nav" aria-label="Primary">
-        <a href="#product">Product</a>
-        <a href="#screens">Demo</a>
-        <a href="#local">On device</a>
-        <a
-          class="topbar__github"
-          href="https://github.com/runwithfun/family-care"
-          rel="noopener noreferrer"
-          >GitHub</a
-        >
-      </nav>
+    <header class="masthead wrap" id="top">
+      <a class="wordmark" href="#top" aria-label="Family Care home">Family Care</a>
+      <a class="masthead__demo" href="#screens">See the demo</a>
     </header>
 
-    <main id="main">
-      <section class="hero" id="top" aria-labelledby="hero-title">
-        <div class="hero__media" aria-hidden="true">
-          <img
-            class="hero__image"
-            src="/src/assets/care_intro.png"
-            alt=""
-            width="1254"
-            height="1254"
-          />
-        </div>
+    <main id="main" tabindex="-1">
+      <section class="hero wrap" aria-labelledby="hero-title">
         <div class="hero__copy">
-          <h1 class="hero__brand" id="hero-title">Care for both of you</h1>
+          <h1 id="hero-title">A day plan for you and your baby</h1>
           <p class="hero__lede">
-            Keep your postpartum follow-up, your child’s appointments, and the records that go with them in one day plan.
+            Keep track of recovery visits, baby appointments, and questions to bring to the clinic.
           </p>
-          <div class="hero__actions">
-            <a class="button button--primary" href="#screens">See the demo</a>
-            <a
-              class="button button--ghost"
-              href="https://github.com/runwithfun/family-care"
-              rel="noopener noreferrer"
-              >View on GitHub</a
-            >
-          </div>
         </div>
+        <img
+          class="hero__art"
+          src="/src/assets/care_intro.png"
+          alt=""
+          width="1254"
+          height="1254"
+          fetchpriority="high"
+        />
       </section>
 
-      <section class="section section--product" id="product" aria-labelledby="product-title">
-        <div class="section__inner">
-          <h2 id="product-title">Two visits on one day</h2>
-          <p class="section__lede">
-            Maya has a well-baby visit in the morning. Her mother, Aoife, has a recovery follow-up that afternoon.
-            Family Care gives Aoife a place to keep both visits and prepare a question about her own recovery.
-          </p>
-          <ul class="feature-list">
-            <li>
-              <strong>A shared day plan</strong>
-              <span>See the time and person for each visit or task, then open the item you need.</span>
-            </li>
-            <li>
-              <strong>The original record</strong>
-              <span>Open the clinic’s sample PDF and keep a missing field unresolved for review.</span>
-            </li>
-            <li>
-              <strong>A question to bring</strong>
-              <span>Check the visit note in Assistant before adding a follow-up to Today.</span>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <section class="section section--screens" id="screens" aria-labelledby="screens-title">
-        <div class="section__inner">
-          <h2 id="screens-title">From a visit note to Today</h2>
-          <p class="section__lede">
-            In these iPhone demo screens, see the fictional family’s day plan, their original sample record,
-            and the follow-up Aoife can confirm from a prepared visit note.
-            <a href="https://github.com/runwithfun/family-care/issues/11">See the demo verification checklist</a>.
-          </p>
-          <div class="screens">
-            <figure class="screen reveal">
-              <img
-                src="/src/assets/demo-home.png"
-                alt="Today shows Maya’s well-baby visit and her mother’s recovery follow-up on November 23"
-                width="1206"
-                height="2622"
-              />
-              <figcaption>Today</figcaption>
-            </figure>
-            <figure class="screen reveal" style="--delay: 80ms">
-              <img
-                src="/src/assets/demo-records.png"
-                alt="Records displays the original sample immunization PDF, with one entry absent from the copy"
-                width="1206"
-                height="2622"
-              />
-              <figcaption>Records</figcaption>
-            </figure>
-            <figure class="screen reveal" style="--delay: 160ms">
-              <img
-                src="/src/assets/demo-assistant.png"
-                alt="Assistant quotes the original visit note and offers to add a recovery question to Today"
-                width="1206"
-                height="2622"
-              />
-              <figcaption>Assistant</figcaption>
-            </figure>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section--local" id="local" aria-labelledby="local-title">
-        <div class="section__inner section__inner--split">
+      <section class="walkthrough" id="screens" aria-labelledby="demo-title">
+        <header class="story-intro wrap">
           <div>
-            <h2 id="local-title">The demo runs on the device</h2>
-            <p class="section__lede">
-              The app opens a sample day and runs without a backend, remote model, or analytics service.
-              GitHub Pages hosts this static project site.
+            <p class="label">The simulator demo</p>
+            <h2 id="demo-title">One day with <br />Aoife and Maya</h2>
+          </div>
+          <p class="story-intro__note">
+            On <time datetime="2026-11-23">November 23</time>, eight-week-old Maya has a morning well-baby visit.
+            Her mother, Aoife, has a recovery follow-up that afternoon. The demo uses a fictional family, a synthetic profile photo, and sample clinic documents.
+          </p>
+        </header>
+
+        <article class="spread spread--plan wrap" id="product" aria-labelledby="plan-title">
+          <div class="spread__copy">
+            <p class="label">Today &amp; Records</p>
+            <h3 id="plan-title">From the day plan to the original record</h3>
+            <p>
+              Today also reminds Aoife to request Maya’s immunization record. In Records, she can open the original sample PDF and leave any unconfirmed details for review.
             </p>
           </div>
-          <ul class="local-points">
-            <li>Sample identities and clinic notes</li>
-            <li>Confirmed follow-ups saved on the device</li>
-            <li>Immunization references shown separately from family records</li>
-          </ul>
+
+          <div class="proof proof--plan">
+            <figure class="capture">
+              <img
+                src="/src/assets/demo-home.png"
+                alt="Maya’s profile photo above the Today agenda, with her well-baby visit at 09:30, Aoife’s follow-up at 14:30, and a records request."
+                width="1206"
+                height="2622"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Today <span>Two visits and a record request</span></figcaption>
+            </figure>
+            <figure class="capture">
+              <img
+                src="/src/assets/demo-records.png"
+                alt="Records displays Maya’s original sample immunization PDF."
+                width="1206"
+                height="2622"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Records <span>The original clinic PDF</span></figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article class="assistant" aria-labelledby="assistant-title">
+          <div class="spread spread--assistant wrap">
+            <div class="spread__copy">
+              <p class="label">Assistant</p>
+              <h3 id="assistant-title">A question to bring to the visit</h3>
+              <p>
+                Aoife can read the original clinic note, then choose <strong class="action-note">Add to Today</strong>.
+                Her recovery question becomes a task marked <strong>For you</strong>.
+              </p>
+            </div>
+
+            <figure class="capture capture--assistant">
+              <img
+                src="/src/assets/demo-assistant.png"
+                alt="Assistant shows an excerpt from the recovery visit note and the actions Open original note and Add to Today."
+                width="1206"
+                height="2622"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Assistant <span>The prepared follow-up</span></figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article class="spread spread--play wrap" aria-labelledby="play-title">
+          <div class="spread__copy">
+            <p class="label">Growing up</p>
+            <h3 id="play-title">A little time to play</h3>
+            <p>
+              In Growing up, Aoife can save a note for Maya’s next visit. She can also open Maya’s
+              <strong>Supervised tummy time</strong> card and save it as an A4 or US Letter PDF.
+            </p>
+          </div>
+
+          <div class="proof proof--play">
+            <figure class="capture">
+              <img
+                src="/src/assets/demo-growing-up.webp"
+                alt="Growing up shows the 0–2 months age stage and its supervised tummy time activity."
+                width="1206"
+                height="2622"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Growing up <span>Pick a game by age</span></figcaption>
+            </figure>
+            <figure class="capture">
+              <img
+                src="/src/assets/demo-play-card.webp"
+                alt="Maya’s supervised tummy time card for ages 0–2 months, with instructions and A4 and US Letter PDF options."
+                width="1206"
+                height="2622"
+                loading="lazy"
+                decoding="async"
+              />
+              <figcaption>Play card <span>Print the same activity</span></figcaption>
+            </figure>
+          </div>
+        </article>
+      </section>
+
+      <section class="local" id="local" aria-labelledby="local-title">
+        <div class="local__inner wrap">
+          <div>
+            <p class="label">On device</p>
+            <h2 id="local-title">Family records stay on the device</h2>
+          </div>
+          <p>
+            The demo saves confirmed follow-ups locally and runs on the phone without a backend, remote model, or analytics service.
+            GitHub Pages serves this static site.
+          </p>
         </div>
       </section>
 
-      <section class="section section--cta" aria-labelledby="cta-title">
-        <div class="section__inner">
-          <h2 id="cta-title">Run the demo on a simulator</h2>
-          <p class="section__lede">
-            The shared UI uses Kotlin and Compose Multiplatform. Clone the repository, use JDK 17, and follow the
-            iOS or Android steps in the README.
-          </p>
-          <a
-            class="button button--primary"
-            href="https://github.com/runwithfun/family-care#run-the-demo"
-            rel="noopener noreferrer"
-            >Open the run guide</a
-          >
+      <section class="run wrap" aria-labelledby="run-title">
+        <div>
+          <h2 id="run-title">Run the demo</h2>
+          <p>Use JDK 17 and follow the iOS or Android instructions in the README.</p>
+        </div>
+        <div class="actions">
+          <a class="button" href="https://github.com/runwithfun/family-care#run-the-demo">Open the run guide</a>
+          <a class="text-link" href="https://github.com/runwithfun/family-care/issues/11">Demo verification checklist</a>
         </div>
       </section>
     </main>
 
-    <footer class="footer">
-      <p><strong>Family Care</strong> · local family planning demo</p>
-      <p>
-        <a href="https://github.com/runwithfun/family-care" rel="noopener noreferrer">Source on GitHub</a>
-      </p>
+    <footer class="footer wrap">
+      <p class="wordmark">Family Care<span aria-hidden="true">.</span></p>
+      <a class="text-link" href="https://github.com/runwithfun/family-care">Source on GitHub</a>
     </footer>
-
-    <script type="module" src="/src/main.js"></script>
   </body>
 </html>
