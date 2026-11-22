@@ -24,4 +24,20 @@ class ChildProfileDraftStateTest {
         assertEquals(DemoFamily.today, draft.validatedBirthDate())
         assertNull(draft.birthDateError)
     }
+
+    @Test
+    fun editingAnOlderProfileMayKeepAnUnknownBirthDate() {
+        val draft = ChildProfileDraftState("Maya", "", "", null, null)
+
+        assertNull(draft.validatedBirthDate(required = false))
+        assertNull(draft.birthDateError)
+
+        draft.birthDateText = "2026-02-30"
+        assertNull(draft.validatedBirthDate(required = false))
+        assertNotNull(draft.birthDateError)
+
+        draft.birthDateText = ""
+        assertNull(draft.validatedBirthDate(required = false))
+        assertNull(draft.birthDateError)
+    }
 }

@@ -121,10 +121,10 @@ class ChildProfileDraftState(
         photoPending = false
     }
 
-    fun validatedBirthDate(): CareDate? {
+    fun validatedBirthDate(required: Boolean = true): CareDate? {
         val raw = birthDateText.trim()
         if (raw.isEmpty()) {
-            birthDateError = "Add the child's date of birth (YYYY-MM-DD)."
+            birthDateError = if (required) "Add the child's date of birth (YYYY-MM-DD)." else null
             return null
         }
         val birthDate = raw.takeIf(BirthDatePattern::matches)?.let(::parseCareDate)
@@ -153,6 +153,7 @@ class ChildProfileDraftState(
 fun ChildProfileFields(
     state: ChildProfileDraftState,
     modifier: Modifier = Modifier,
+    birthDateRequired: Boolean = true,
     onSubmit: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -243,7 +244,12 @@ fun ChildProfileFields(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Date of birth (YYYY-MM-DD)") },
             supportingText = {
-                Text(state.birthDateError ?: "Used for age stages and the day plan.")
+                val hint = if (birthDateRequired) {
+                    "Used for age stages and the day plan."
+                } else {
+                    "Optional. Add it to get an age stage suggestion."
+                }
+                Text(state.birthDateError ?: hint)
             },
             isError = state.birthDateError != null,
             singleLine = true,
