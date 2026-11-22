@@ -34,15 +34,16 @@ fun rememberCareSession(plan: com.runwithfun.familycare.domain.CarePlan): CareSe
 
 internal fun encodeCarePlanEvents(snapshot: CarePlanEventSnapshot): String = buildString {
     appendLine("v1")
-    appendLine("nextLocalId=${snapshot.nextLocalId}")
+    append("nextLocalId=${snapshot.nextLocalId}")
     for (event in snapshot.events) {
-        appendLine(encodeEvent(event))
+        append('\n')
+        append(encodeEvent(event))
     }
 }
 
 internal fun decodeCarePlanEvents(encoded: String): CarePlanEventSnapshot {
     // Do not trim event rows: trailing empty fields are meaningful tabs.
-    val lines = encoded.lineSequence().map { it.trimEnd('\r') }.filter { it.isNotEmpty() }.toList()
+    val lines = encoded.lineSequence().map { it.trimEnd('\r') }.filter { it.isNotBlank() }.toList()
     require(lines.isNotEmpty() && lines.first() == "v1") { "Unsupported care-plan event store version" }
     var nextLocalId = 1
     val events = mutableListOf<CareEvent>()

@@ -5,16 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Family Care is a local mobile demo for a fictional family’s day plan—visits, tasks, and sample records on the device."
+      content="Family Care brings postpartum follow-ups, child appointments, and records into one day plan. Run the hackathon demo on iOS or Android."
     />
     <title>Family Care</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..800&display=swap"
-      rel="stylesheet"
-    />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
@@ -24,7 +18,7 @@
       <a class="topbar__brand" href="#top" aria-label="Family Care home">Family Care</a>
       <nav class="topbar__nav" aria-label="Primary">
         <a href="#product">Product</a>
-        <a href="#screens">Previews</a>
+        <a href="#screens">Demo</a>
         <a href="#local">On device</a>
         <a
           class="topbar__github"
@@ -36,29 +30,28 @@
     </header>
 
     <main id="main">
-      <section class="hero" id="top" aria-labelledby="hero-brand">
+      <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="hero__media" aria-hidden="true">
           <img
             class="hero__image"
-            src="/src/assets/care_intro.jpg"
+            src="/src/assets/care_intro.png"
             alt=""
-            width="1200"
-            height="1200"
+            width="1254"
+            height="1254"
           />
         </div>
         <div class="hero__copy">
-          <p class="hero__brand" id="hero-brand">Family Care</p>
-          <h1 class="hero__headline">A calm day plan for a fictional family’s next visits.</h1>
+          <h1 class="hero__brand" id="hero-title">Care for both of you</h1>
           <p class="hero__lede">
-            The starter demo opens Maya’s profile and today’s shared agenda locally—no backend required.
+            Keep your postpartum follow-up, your child’s appointments, and the records that go with them in one day plan.
           </p>
           <div class="hero__actions">
-            <a class="button button--primary" href="#screens">See the preview screens</a>
+            <a class="button button--primary" href="#screens">See the demo</a>
             <a
               class="button button--ghost"
               href="https://github.com/runwithfun/family-care"
               rel="noopener noreferrer"
-              >View the project</a
+              >View on GitHub</a
             >
           </div>
         </div>
@@ -66,25 +59,23 @@
 
       <section class="section section--product" id="product" aria-labelledby="product-title">
         <div class="section__inner">
-          <p class="eyebrow">What the starter shows</p>
-          <h2 id="product-title">One sample day for Maya and Aoife</h2>
+          <h2 id="product-title">Two visits on one day</h2>
           <p class="section__lede">
-            Family Care opens a fictional child profile and a fixed demo day. The current build lists today’s
-            visits and tasks from a shared in-memory care plan—Maya’s well-baby visit, Aoife’s recovery
-            follow-up, and a task to request an immunization copy.
+            Maya has a well-baby visit in the morning. Her mother, Aoife, has a recovery follow-up that afternoon.
+            Family Care gives Aoife a place to keep both visits and prepare a question about her own recovery.
           </p>
           <ul class="feature-list">
             <li>
-              <strong>Shared demo plan</strong>
-              <span>One care plan instance feeds the starter screen with synthetic people and events.</span>
+              <strong>A shared day plan</strong>
+              <span>See the time and person for each visit or task, then open the item you need.</span>
             </li>
             <li>
-              <strong>Clear ownership</strong>
-              <span>Each event belongs to a family member, so “for you” and child visits stay distinct.</span>
+              <strong>The original record</strong>
+              <span>Open the clinic’s sample PDF and keep a missing field unresolved for review.</span>
             </li>
             <li>
-              <strong>Sample records nearby</strong>
-              <span>The demo data also includes visit-summary and immunization notes for that same day.</span>
+              <strong>A question to bring</strong>
+              <span>Check the visit note in Assistant before adding a follow-up to Today.</span>
             </li>
           </ul>
         </div>
@@ -92,40 +83,39 @@
 
       <section class="section section--screens" id="screens" aria-labelledby="screens-title">
         <div class="section__inner">
-          <p class="eyebrow">Preview artwork</p>
-          <h2 id="screens-title">Illustrative screens from the starter day</h2>
+          <h2 id="screens-title">From a visit note to Today</h2>
           <p class="section__lede">
-            These frames are previews of the demonstrated scenario—not production screenshots. They sketch
-            Maya’s day plan, the sample documents in the demo data, and a local Assistant proposal tied to
-            Aoife’s recovery note. The full end-to-end flow is verified in issue #11.
+            In these iPhone demo screens, see the fictional family’s day plan, their original sample record,
+            and the follow-up Aoife can confirm from a prepared visit note.
+            <a href="https://github.com/runwithfun/family-care/issues/11">See the demo verification checklist</a>.
           </p>
           <div class="screens">
             <figure class="screen reveal">
               <img
-                src="/src/assets/screen-day.svg"
-                alt="Preview of a day plan listing Maya’s well-baby visit and related tasks"
-                width="320"
-                height="640"
+                src="/src/assets/demo-home.png"
+                alt="Today shows Maya’s well-baby visit and her mother’s recovery follow-up on November 23"
+                width="1206"
+                height="2622"
               />
-              <figcaption>Day plan preview</figcaption>
+              <figcaption>Today</figcaption>
             </figure>
             <figure class="screen reveal" style="--delay: 80ms">
               <img
-                src="/src/assets/screen-docs.svg"
-                alt="Preview of sample visit summary and immunization record cards"
-                width="320"
-                height="640"
+                src="/src/assets/demo-records.png"
+                alt="Records displays the original sample immunization PDF, with one entry absent from the copy"
+                width="1206"
+                height="2622"
               />
-              <figcaption>Records preview</figcaption>
+              <figcaption>Records</figcaption>
             </figure>
             <figure class="screen reveal" style="--delay: 160ms">
               <img
-                src="/src/assets/screen-assistant.svg"
-                alt="Preview of an Assistant proposal to ask about recovery at today’s visit"
-                width="320"
-                height="640"
+                src="/src/assets/demo-assistant.png"
+                alt="Assistant quotes the original visit note and offers to add a recovery question to Today"
+                width="1206"
+                height="2622"
               />
-              <figcaption>Assistant preview</figcaption>
+              <figcaption>Assistant</figcaption>
             </figure>
           </div>
         </div>
@@ -134,24 +124,23 @@
       <section class="section section--local" id="local" aria-labelledby="local-title">
         <div class="section__inner section__inner--split">
           <div>
-            <p class="eyebrow">Designed to stay local</p>
             <h2 id="local-title">The demo runs on the device</h2>
             <p class="section__lede">
-              The starter app keeps its sample plan in memory and does not call a backend, remote model, or
-              analytics service. GitHub Pages hosts only this static project site.
+              The app opens a sample day and runs without a backend, remote model, or analytics service.
+              GitHub Pages hosts this static project site.
             </p>
           </div>
           <ul class="local-points">
-            <li>Synthetic identities, dates, and clinic notes only</li>
-            <li>Shared care-plan model for the demo day</li>
-            <li>Public immunization references stay as external links</li>
+            <li>Sample identities and clinic notes</li>
+            <li>Confirmed follow-ups saved on the device</li>
+            <li>Immunization references shown separately from family records</li>
           </ul>
         </div>
       </section>
 
       <section class="section section--cta" aria-labelledby="cta-title">
         <div class="section__inner">
-          <h2 id="cta-title">Run the starter on a simulator</h2>
+          <h2 id="cta-title">Run the demo on a simulator</h2>
           <p class="section__lede">
             The shared UI uses Kotlin and Compose Multiplatform. Clone the repository, use JDK 17, and follow the
             iOS or Android steps in the README.
