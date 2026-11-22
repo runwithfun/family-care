@@ -12,7 +12,9 @@ internal sealed interface OnboardingPhotoResult {
     data object Failed : OnboardingPhotoResult
 }
 
+internal class OnboardingPhotoPicker(val launch: () -> Unit, val cancel: () -> Unit)
+
 @Composable
-internal expect fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResult) -> Unit): (() -> Unit)?
+internal expect fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResult) -> Unit): OnboardingPhotoPicker?
 
 internal expect fun decodeOnboardingPhoto(bytes: ByteArray): ImageBitmap?
