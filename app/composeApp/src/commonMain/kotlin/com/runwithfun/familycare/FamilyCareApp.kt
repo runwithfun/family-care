@@ -69,6 +69,7 @@ import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
 import com.runwithfun.familycare.ui.onboarding.FamilyOnboardingScreen
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
+import com.runwithfun.familycare.ui.onboarding.FamilyProfile
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfileState
 import org.jetbrains.compose.resources.painterResource
 
@@ -101,18 +102,22 @@ fun FamilyCareApp() {
                     )
                 },
                 saveFailed = family.saveFailed,
-                onComplete = { name, photo -> family.save(name, photo) },
+                onComplete = { name, birthDate, notes, photo ->
+                    family.save(name, birthDate = birthDate, notes = notes, photoBytes = photo)
+                },
             )
         } else {
-            FamilyCareNavigation(profile.childName, profile.photoBytes)
+            FamilyCareNavigation(profile)
         }
     }
 }
 
 @Composable
-private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
-    val photo = rememberFamilyProfilePhoto(photoBytes)
-    val plan = remember(childName) { DemoFamily.createPlan(childName) }
+private fun FamilyCareNavigation(profile: FamilyProfile) {
+    val photo = rememberFamilyProfilePhoto(profile.photoBytes)
+    val plan = remember(profile.childName, profile.birthDate) {
+        DemoFamily.createPlan(profile.childName, profile.birthDate)
+    }
     val assistant = rememberAssistantActions(plan)
     val growingNotes = rememberGrowingNotes(plan)
     val session = rememberCareSession(plan)
@@ -163,6 +168,16 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                                 )
                                 val age = child.birthDate?.let { childAge(it, DemoFamily.today) }
                                 if (age != null) Text(age, color = colors.onSurfaceVariant)
+                                child.birthDate?.let {
+                                    Text("Born $it", color = colors.onSurfaceVariant)
+                                }
+                                if (profile.notes.isNotBlank()) {
+                                    Text(
+                                        profile.notes,
+                                        color = colors.onSurfaceVariant,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                }
                             }
                         }
                     }
