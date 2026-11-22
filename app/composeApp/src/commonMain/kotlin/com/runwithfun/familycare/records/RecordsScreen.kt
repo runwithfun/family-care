@@ -33,6 +33,7 @@ import com.runwithfun.familycare.domain.CareDocument
 import com.runwithfun.familycare.domain.DocumentKind
 import com.runwithfun.familycare.domain.FamilyMember
 import com.runwithfun.familycare.domain.FamilyRole
+import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.domain.hasGaps
 import com.runwithfun.familycare.domain.isComplete
