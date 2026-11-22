@@ -11,7 +11,11 @@ object ActivityPdf {
     fun fileName(activity: ReviewedActivity): String =
         "family-care-${activity.id}.pdf"
 
-    fun render(activity: ReviewedActivity, paper: ActivityPaper = ActivityPaper.LETTER): ByteArray {
+    fun render(
+        activity: ReviewedActivity,
+        paper: ActivityPaper = ActivityPaper.LETTER,
+        source: String? = null,
+    ): ByteArray {
         val lines = buildList {
             add("Family Care")
             add(activity.title)
@@ -23,6 +27,10 @@ object ActivityPdf {
             activity.steps.forEachIndexed { index, step ->
                 add("${index + 1}. $step")
             }
+            if (source != null) {
+                add("")
+                add("Source: $source")
+            }
         }
         return buildTextPdf(lines, paper)
     }
@@ -30,24 +38,26 @@ object ActivityPdf {
     private fun buildTextPdf(lines: List<String>, paper: ActivityPaper): ByteArray {
         val margin = 56
         val content = buildString {
-            var baseline = paper.height - 62
+            append("0.92 0.74 0.79 rg $margin ${paper.height - 53} 42 4 re f\n0 g\n")
+            var baseline = paper.height - 76
             lines.forEachIndexed { index, line ->
                 if (line.isBlank()) {
                     baseline -= 12
                 } else {
                     val size = when (index) {
                         0 -> 10
-                        1 -> 22
-                        else -> 12
+                        1 -> 26
+                        else -> 14
                     }
-                    val font = if (index <= 1) "F2" else "F1"
-                    for (part in wrap(line, (paper.width - margin * 2) / size)) {
+                    val font = if (index <= 1 || line == "Steps") "F2" else "F1"
+                    for (part in wrap(line, (paper.width - margin * 2) * 10 / size)) {
                         check(baseline >= margin) { "The activity does not fit on one ${paper.label} page" }
                         append("BT /$font $size Tf $margin $baseline Td (")
                         append(escapePdfString(part))
                         append(") Tj ET\n")
-                        baseline -= size + if (index <= 2) 10 else 6
+                        baseline -= size + if (index <= 2) 13 else 6
                     }
+                    if (index >= 5) baseline -= 5
                 }
             }
         }
@@ -82,19 +92,27 @@ object ActivityPdf {
         return body.toString().encodeToByteArray()
     }
 
-    private fun wrap(value: String, length: Int): List<String> = buildList {
+    private fun wrap(value: String, maxWidth: Int): List<String> = buildList {
         var line = ""
-        for (word in value.trim().split(Regex("\\s+")).flatMap { it.chunked(length) }) {
-            if (line.isEmpty()) {
-                line = word
-            } else if (line.length + 1 + word.length <= length) {
-                line += " $word"
+        for (word in value.trim().split(Regex("\\s+"))) {
+            val candidate = if (line.isEmpty()) word else "$line $word"
+            if (line.isEmpty() || textWidth(candidate) <= maxWidth) {
+                line = candidate
             } else {
                 add(line)
                 line = word
             }
         }
         if (line.isNotEmpty()) add(line)
+    }
+
+    private fun textWidth(value: String): Int = value.fold(0) { width, char ->
+        width + when (char) {
+            'M', 'W', 'm', '%', '@' -> 11
+            'i', 'l', '.', ',', ' ', '\'' -> 4
+            in 'A'..'Z' -> 9
+            else -> 7
+        }
     }
 
     private fun escapePdfString(value: String): String = buildString(value.length) {
