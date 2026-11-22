@@ -57,6 +57,8 @@ import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
 import com.runwithfun.familycare.ui.home.monthAndDay
 import com.runwithfun.familycare.ui.home.statusLabel
+import com.runwithfun.familycare.records.RecordsScreen
+import com.runwithfun.familycare.records.rememberRecordsController
 import com.runwithfun.familycare.ui.onboarding.FamilyOnboardingScreen
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfileState
@@ -155,10 +157,9 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                             onOpenCalendar = { detail = HomeDetail.Calendar },
                             onOpenEvent = { detail = HomeDetail.Event(it) },
                         )
-                        AppTab.RECORDS -> Page("Records") {
-                            for (document in plan.documents) {
-                                Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
-                            }
+                        AppTab.RECORDS -> {
+                            val records = rememberRecordsController(plan)
+                            RecordsScreen(records = records, people = people)
                         }
                         AppTab.GROWING_UP -> Page("Growing up") {
                             Text(child.displayName, style = MaterialTheme.typography.titleMedium)

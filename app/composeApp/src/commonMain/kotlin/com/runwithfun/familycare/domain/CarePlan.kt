@@ -50,20 +50,20 @@ class CarePlan(
     /**
      * Records a parent decision for one extracted field.
      * Pass [FieldReview] with a null value to leave the field explicitly unresolved.
-     * Does not invent immunizations or other clinical facts.
+     * Does not invent immunizations or rewrite [recordedImmunizations].
      */
     fun reviewField(documentId: String, fieldLabel: String, review: FieldReview) {
-        while (true) {
-            val current = documentsById.load()
-            val document = current[documentId]
-                ?: throw IllegalArgumentException("Unknown document: $documentId")
+        updateDocument(documentId) { document ->
             val index = document.fields.indexOfFirst { it.label == fieldLabel }
             require(index >= 0) { "Unknown field \"$fieldLabel\" on document $documentId" }
             val updatedFields = document.fields.toMutableList()
             updatedFields[index] = updatedFields[index].copy(review = review)
-            val updated = document.copy(fields = updatedFields)
-            if (documentsById.compareAndSet(current, current + (documentId to updated))) return
+            document.copy(fields = updatedFields)
         }
+    }
+
+    fun setDocumentOriginal(documentId: String, original: DocumentOriginal) {
+        updateDocument(documentId) { it.copy(original = original) }
     }
 
     fun eventsOn(date: CareDate, personId: String? = null): List<CareEvent> =
@@ -76,6 +76,25 @@ class CarePlan(
             .filterIsInstance<Visit>()
             .filter { personId == null || it.personId == personId }
             .sortedWith(compareBy<Visit> { it.date.toString() }.thenBy { it.time == null }.thenBy { it.time }.thenBy { it.id })
+
+    /** Open request tasks for a source document, independent of appointment dates. */
+    fun openTasksForDocument(documentId: String): List<Task> =
+        eventsById.load().values
+            .filterIsInstance<Task>()
+            .filter { it.sourceDocumentId == documentId && it.status == TaskStatus.OPEN }
+            .sortedBy { it.id }
+
+    /**
+     * Links an existing open request for the same source document, or adds [task] once.
+     * Never invents clinical status; only manages the follow-up task identity.
+     */
+    fun linkOpenRequestTask(task: Task): Task {
+        val sourceId = task.sourceDocumentId
+            ?: throw IllegalArgumentException("A request task must name its source document")
+        openTasksForDocument(sourceId).firstOrNull()?.let { return it }
+        addEvent(task)
+        return task
+    }
 
     fun addEvent(event: CareEvent) {
         while (true) {
@@ -93,6 +112,16 @@ class CarePlan(
     fun confirm(proposal: AssistantProposal): Task {
         addEvent(proposal.task)
         return proposal.task
+    }
+
+    private fun updateDocument(documentId: String, transform: (CareDocument) -> CareDocument) {
+        while (true) {
+            val current = documentsById.load()
+            val document = current[documentId]
+                ?: throw IllegalArgumentException("Unknown document: $documentId")
+            val updated = transform(document)
+            if (documentsById.compareAndSet(current, current + (documentId to updated))) return
+        }
     }
 
     private fun validateEvent(event: CareEvent, events: Map<String, CareEvent>) {

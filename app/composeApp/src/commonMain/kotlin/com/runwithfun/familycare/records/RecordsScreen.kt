@@ -3,6 +3,7 @@ package com.runwithfun.familycare.records
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,30 +25,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.runwithfun.familycare.demo.DemoFamily
 import com.runwithfun.familycare.domain.CareDocument
-import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.DocumentKind
 import com.runwithfun.familycare.domain.FamilyMember
 import com.runwithfun.familycare.domain.FamilyRole
-import com.runwithfun.familycare.domain.FieldReview
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.domain.hasGaps
 import com.runwithfun.familycare.domain.isComplete
 import com.runwithfun.familycare.domain.isConfirmed
-import com.runwithfun.familycare.domain.originalRetrievalLabel
-import com.runwithfun.familycare.domain.originalText
+import com.runwithfun.familycare.domain.isExplicitlyUnresolved
+import com.runwithfun.familycare.domain.isUntouched
 import com.runwithfun.familycare.domain.providerFollowUpMessage
 import com.runwithfun.familycare.domain.shownValue
 
+private val NarrowWidth = 600.dp
+
 @Composable
 fun RecordsScreen(
-    plan: CarePlan,
+    records: RecordsController,
     people: Map<String, FamilyMember>,
     modifier: Modifier = Modifier,
-    onRevision: () -> Unit = {},
 ) {
     var selectedDocumentId by remember { mutableStateOf<String?>(null) }
-    val selected = selectedDocumentId?.let { plan.document(it) }
+    val selected = selectedDocumentId?.let { records.document(it) }
 
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
@@ -55,25 +56,38 @@ fun RecordsScreen(
     ) {
         Text("Records", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Imported clinic documents stay on this device. " +
-                "Review extracted details beside the original. " +
-                "Missing immunization details stay unresolved until the clinic confirms them.",
+            "Clinic documents stay on this device. Import the synthetic PDF, reopen the stored original, " +
+                "and review extracted fields without guessing missing vaccine status.",
             style = MaterialTheme.typography.bodyMedium,
         )
 
+        records.lastErrorDetail?.let { detail ->
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    detail,
+                    modifier = Modifier.padding(12.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+        }
+
         if (selected == null) {
             RecordsOverview(
-                plan = plan,
+                records = records,
                 people = people,
                 onOpenDocument = { selectedDocumentId = it },
             )
         } else {
             DocumentDetail(
-                plan = plan,
+                records = records,
                 document = selected,
                 person = people.getValue(selected.personId),
                 onBack = { selectedDocumentId = null },
-                onReviewed = onRevision,
             )
         }
     }
@@ -81,22 +95,30 @@ fun RecordsScreen(
 
 @Composable
 private fun RecordsOverview(
-    plan: CarePlan,
+    records: RecordsController,
     people: Map<String, FamilyMember>,
     onOpenDocument: (String) -> Unit,
 ) {
+    if (!records.isPdfImported()) {
+        Button(onClick = { records.importSyntheticImmunizationPdf() }) {
+            Text("Import synthetic clinic PDF")
+        }
+    } else {
+        Text("Synthetic clinic PDF is stored on this device.", style = MaterialTheme.typography.bodyMedium)
+    }
+
     SectionTitle("Documents")
-    for (document in plan.documents) {
+    for (document in records.documents()) {
         val person = people.getValue(document.personId)
         DocumentRow(document, person, onClick = { onOpenDocument(document.id) })
     }
 
     HorizontalDivider()
     SectionTitle("Documented immunizations")
-    if (plan.recordedImmunizations.isEmpty()) {
+    if (records.plan.recordedImmunizations.isEmpty()) {
         Text("No documented immunizations yet.", style = MaterialTheme.typography.bodyMedium)
     } else {
-        for (record in plan.recordedImmunizations) {
+        for (record in records.plan.recordedImmunizations) {
             val person = people.getValue(record.personId)
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(record.name, style = MaterialTheme.typography.titleMedium)
@@ -105,7 +127,7 @@ private fun RecordsOverview(
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 Text(
-                    "Source: ${plan.document(record.sourceDocumentId)?.originalRetrievalLabel() ?: record.sourceDocumentId}",
+                    "Source snapshot from document (not rewritten by field corrections)",
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -118,7 +140,7 @@ private fun RecordsOverview(
         "Schedules from public health sites. These are not your child's record.",
         style = MaterialTheme.typography.bodyMedium,
     )
-    for (reference in plan.immunizationReferences) {
+    for (reference in records.plan.immunizationReferences) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 "${reference.authority} (${reference.jurisdiction})",
@@ -130,13 +152,8 @@ private fun RecordsOverview(
 
     HorizontalDivider()
     SectionTitle("Appointments")
-    val appointments = plan.appointments()
-    if (appointments.isEmpty()) {
-        Text("No appointments yet.", style = MaterialTheme.typography.bodyMedium)
-    } else {
-        for (visit in appointments) {
-            AppointmentRow(visit, people.getValue(visit.personId))
-        }
+    for (visit in records.plan.appointments()) {
+        AppointmentRow(visit, people.getValue(visit.personId))
     }
 }
 
@@ -189,38 +206,43 @@ private fun AppointmentRow(visit: Visit, person: FamilyMember) {
 
 @Composable
 private fun DocumentDetail(
-    plan: CarePlan,
+    records: RecordsController,
     document: CareDocument,
     person: FamilyMember,
     onBack: () -> Unit,
-    onReviewed: () -> Unit,
 ) {
+    // Observe controller revision so Save refreshes field state.
+    records.revision
+    val current = records.document(document.id) ?: document
+
     TextButton(onClick = onBack) {
         Text("Back to records")
     }
-    Text(document.original.fileName, style = MaterialTheme.typography.titleLarge)
+    Text(current.original.fileName, style = MaterialTheme.typography.titleLarge)
     Text(
-        "${kindLabel(document.kind)} · ${person.displayName} · ${document.original.mediaType}",
+        "${kindLabel(current.kind)} · ${person.displayName} · ${current.original.mediaType}",
         style = MaterialTheme.typography.bodyMedium,
     )
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        OriginalPanel(
-            document = document,
-            modifier = Modifier.weight(1f),
-        )
-        ExtractedPanel(
-            plan = plan,
-            document = document,
-            modifier = Modifier.weight(1f),
-            onReviewed = onReviewed,
-        )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val stack = maxWidth < NarrowWidth
+        if (stack) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OriginalPanel(records, current)
+                ExtractedPanel(records, current)
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OriginalPanel(records, current, modifier = Modifier.weight(1f))
+                ExtractedPanel(records, current, modifier = Modifier.weight(1f))
+            }
+        }
     }
 
-    document.providerFollowUpMessage()?.let { message ->
+    current.providerFollowUpMessage()?.let { message ->
         Surface(
             color = MaterialTheme.colorScheme.primaryContainer,
             shape = MaterialTheme.shapes.small,
@@ -232,39 +254,33 @@ private fun DocumentDetail(
             ) {
                 Text("Provider follow-up", style = MaterialTheme.typography.titleMedium)
                 Text(message, style = MaterialTheme.typography.bodyMedium)
+                val linked = records.linkExistingProviderRequest(current.id)
+                if (linked != null) {
+                    Text("Open request: ${linked.title}", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    OutlinedButton(onClick = { records.ensureProviderRequest(current.id) }) {
+                        Text("Link provider request")
+                    }
+                }
             }
         }
     }
 
-    FollowUpTasks(plan = plan, document = document)
-}
-
-@Composable
-private fun FollowUpTasks(plan: CarePlan, document: CareDocument) {
-    if (!document.hasGaps()) return
-    val linkedTitles = linkedRequestTitles(plan, document)
-    if (linkedTitles.isEmpty()) return
-    SectionTitle("Open requests")
-    for (title in linkedTitles) {
-        Text(title, style = MaterialTheme.typography.bodyMedium)
+    val openRequests = records.openRequestTasks(current.id)
+    if (openRequests.isNotEmpty()) {
+        SectionTitle("Open requests")
+        for (task in openRequests) {
+            Text("${task.title} · ${task.status.name.lowercase()}", style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
-/**
- * Finds tasks that point at this document without guessing clinical status.
- * Uses appointment dates already in the plan as a scan window plus the document person's visits.
- */
-private fun linkedRequestTitles(plan: CarePlan, document: CareDocument): List<String> {
-    val dates = plan.appointments(document.personId).map { it.date }.toSet() +
-        plan.appointments().map { it.date }.toSet()
-    return dates
-        .flatMap { date -> plan.eventsOn(date, document.personId) }
-        .filter { it.sourceDocumentId == document.id }
-        .map { it.title }
-        .distinct()
-}
 
 @Composable
-private fun OriginalPanel(document: CareDocument, modifier: Modifier = Modifier) {
+private fun OriginalPanel(
+    records: RecordsController,
+    document: CareDocument,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.small)
@@ -272,28 +288,44 @@ private fun OriginalPanel(document: CareDocument, modifier: Modifier = Modifier)
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("Original", style = MaterialTheme.typography.titleMedium)
-        Text(
-            "Retrievable as ${document.originalRetrievalLabel()}",
-            style = MaterialTheme.typography.bodySmall,
-        )
-        val text = document.originalText()
-        if (text != null) {
-            Text(text, style = MaterialTheme.typography.bodyMedium)
+        Button(onClick = { records.reopenOriginal(document.id) }) {
+            Text("Open stored original")
+        }
+        val opened = records.openedOriginal?.takeIf {
+            it.fileName == document.original.fileName || it.storageKey == document.storageKeyOrNull()
+        }
+        if (opened != null) {
+            Text(
+                buildString {
+                    append(opened.fileName)
+                    append(" · ")
+                    append(opened.mediaType)
+                    opened.byteSize?.let { append(" · $it bytes") }
+                    if (opened.isPdf) append(" · PDF")
+                    opened.storageKey?.let { append("\nStored key: $it") }
+                },
+                style = MaterialTheme.typography.bodySmall,
+            )
+            opened.textPreview?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
+            }
         } else {
             Text(
-                "Stored file key is available on this device.",
-                style = MaterialTheme.typography.bodyMedium,
+                "Use Open stored original to retrieve the on-device file.",
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
 }
 
+private fun CareDocument.storageKeyOrNull(): String? =
+    (original.content as? com.runwithfun.familycare.domain.OriginalContent.StoredFile)?.storageKey
+
 @Composable
 private fun ExtractedPanel(
-    plan: CarePlan,
+    records: RecordsController,
     document: CareDocument,
     modifier: Modifier = Modifier,
-    onReviewed: () -> Unit,
 ) {
     Column(
         modifier = modifier
@@ -304,76 +336,83 @@ private fun ExtractedPanel(
         Text("Extracted details", style = MaterialTheme.typography.titleMedium)
         for (field in document.fields) {
             FieldEditor(
+                records = records,
+                documentId = document.id,
                 label = field.label,
                 proposal = field.proposal?.value,
                 quotedText = field.proposal?.quotedText,
-                currentReview = field.review?.value,
+                statusLabel = records.fieldStatusLabel(document.id, field.label),
                 isConfirmed = field.isConfirmed(),
+                isExplicitlyUnresolved = field.isExplicitlyUnresolved(),
+                isUntouched = field.isUntouched(),
                 shown = field.shownValue(),
-                onConfirm = { value ->
-                    plan.reviewField(document.id, field.label, FieldReview(value))
-                    onReviewed()
-                },
-                onLeaveUnresolved = {
-                    plan.reviewField(document.id, field.label, FieldReview(null))
-                    onReviewed()
-                },
             )
+            if (field.label == DemoFamily.immunizationAField) {
+                val snapshot = records.recordedDoseSnapshot(
+                    document.id,
+                    DemoFamily.immunizationAName,
+                )
+                if (snapshot != null) {
+                    val reviewed = field.review?.value
+                    Text(
+                        buildString {
+                            append("Recorded dose (source snapshot): ")
+                            append(snapshot.dateAdministered)
+                            if (reviewed != null && reviewed != snapshot.dateAdministered.toString()) {
+                                append(
+                                    " — document review is $reviewed; the recorded dose stays as its own snapshot.",
+                                )
+                            } else {
+                                append(" — field corrections do not rewrite this recorded dose.")
+                            }
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun FieldEditor(
+    records: RecordsController,
+    documentId: String,
     label: String,
     proposal: String?,
     quotedText: String?,
-    currentReview: String?,
+    statusLabel: String,
     isConfirmed: Boolean,
+    isExplicitlyUnresolved: Boolean,
+    isUntouched: Boolean,
     shown: String?,
-    onConfirm: (String) -> Unit,
-    onLeaveUnresolved: () -> Unit,
 ) {
-    var draft by remember(label, currentReview, proposal) {
-        mutableStateOf(currentReview ?: proposal.orEmpty())
+    var draft by remember(label, shown, isExplicitlyUnresolved, isUntouched, records.revision) {
+        mutableStateOf(shown.orEmpty())
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(label, style = MaterialTheme.typography.titleSmall)
-        when {
-            proposal == null && currentReview == null -> {
-                Text(
-                    "Not found on this document. Leave unresolved and ask the clinic.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            quotedText != null -> {
-                Text("Quoted: “$quotedText”", style = MaterialTheme.typography.bodySmall)
-            }
+        quotedText?.let {
+            Text("Quoted: “$it”", style = MaterialTheme.typography.bodySmall)
         }
+        Text(statusLabel, style = MaterialTheme.typography.bodyMedium)
         if (isConfirmed) {
-            Text("Confirmed: $shown", style = MaterialTheme.typography.bodyMedium)
-        } else if (currentReview == null && proposal == null) {
-            Text("Status: unresolved — no vaccine or visit fact assumed.", style = MaterialTheme.typography.bodyMedium)
-        } else if (currentReview == null) {
-            Text("Proposed: $proposal", style = MaterialTheme.typography.bodyMedium)
-        } else {
-            Text("Left unresolved", style = MaterialTheme.typography.bodyMedium)
+            Text("Saved value: $shown", style = MaterialTheme.typography.bodySmall)
+        } else if (isExplicitlyUnresolved) {
+            Text("Saved as explicitly unresolved.", style = MaterialTheme.typography.bodySmall)
         }
         OutlinedTextField(
             value = draft,
             onValueChange = { draft = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Correction") },
+            label = { Text(label) },
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
-                onClick = { if (draft.isNotBlank()) onConfirm(draft.trim()) },
-                enabled = draft.isNotBlank(),
-            ) {
-                Text("Save correction")
+            Button(onClick = { records.saveCorrection(documentId, label, draft) }) {
+                Text("Save")
             }
-            OutlinedButton(onClick = onLeaveUnresolved) {
+            OutlinedButton(onClick = { records.leaveUnresolved(documentId, label) }) {
                 Text("Leave unresolved")
             }
         }

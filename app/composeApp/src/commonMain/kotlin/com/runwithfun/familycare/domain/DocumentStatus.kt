@@ -3,9 +3,14 @@ package com.runwithfun.familycare.domain
 /** A field is complete only when the parent confirmed a non-null value. */
 fun DocumentField.isConfirmed(): Boolean = review?.value != null
 
-/** Explicit leave-unresolved, or never reviewed and no extraction to work from. */
+/** Explicit leave-unresolved decision (distinct from an untouched proposal). */
+fun DocumentField.isExplicitlyUnresolved(): Boolean = review != null && review.value == null
+
+/** Never reviewed — proposal may still be present. */
+fun DocumentField.isUntouched(): Boolean = review == null
+
 fun DocumentField.needsAttention(): Boolean =
-    review?.value == null && (review != null || proposal == null)
+    isExplicitlyUnresolved() || (isUntouched() && proposal == null)
 
 fun DocumentField.shownValue(): String? = review?.value ?: proposal?.value
 
@@ -32,6 +37,11 @@ fun CareDocument.providerFollowUpMessage(): String? {
 fun CareDocument.originalText(): String? = when (val content = original.content) {
     is OriginalContent.Text -> content.value
     is OriginalContent.StoredFile -> null
+}
+
+fun CareDocument.storageKey(): String? = when (val content = original.content) {
+    is OriginalContent.StoredFile -> content.storageKey
+    is OriginalContent.Text -> null
 }
 
 fun CareDocument.originalRetrievalLabel(): String = when (val content = original.content) {
