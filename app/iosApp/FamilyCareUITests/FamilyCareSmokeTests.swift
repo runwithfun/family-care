@@ -10,14 +10,12 @@ final class FamilyCareSmokeTests: XCTestCase {
 
         // Other UI tests may already have created the local demo profile in this Simulator.
         if app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@", "Continue"))
+            .matching(labelPredicate("Open demo"))
             .firstMatch
             .waitForExistence(timeout: 3)
         {
             assertVisible("Care for both of you", in: app)
-            tap("Continue", in: app)
-            assertVisible("Create a child profile", in: app)
-            tap("Open day plan", in: app)
+            tap("Open demo", in: app)
         }
         assertVisible("Calendar", in: app)
         capture("FamilyCare-Home", in: app)

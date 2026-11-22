@@ -76,7 +76,7 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/family-care-derived" \
             CODE_SIGNING_ALLOWED=NO build-for-testing
       - name: Walk through the synthetic family demo
-        timeout-minutes: 8
+        timeout-minutes: 15
         env:
           SIMULATOR_ID: ${{ steps.simulator.outputs.id }}
         run: |

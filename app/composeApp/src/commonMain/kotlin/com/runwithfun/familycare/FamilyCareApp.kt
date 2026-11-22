@@ -111,8 +111,8 @@ fun FamilyCareApp() {
                     )
                 },
                 saveFailed = family.saveFailed,
-                onComplete = { name, birthDate, notes, photo ->
-                    family.save(name, birthDate = birthDate, notes = notes, photoBytes = photo)
+                onOpenDemo = {
+                    family.save(DemoFamily.childName, birthDate = DemoFamily.childBirthDate)
                 },
             )
         } else {

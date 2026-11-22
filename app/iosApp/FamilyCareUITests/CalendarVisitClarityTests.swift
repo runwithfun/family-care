@@ -12,7 +12,7 @@ final class CalendarVisitClarityTests: XCTestCase {
     func testCalendarVisitRescheduleAndRestart() {
         let app = launchCleanApp()
 
-        completeOnboarding(in: app)
+        openDemoIfNeeded(in: app)
         assertVisible("Calendar", in: app)
         capture("40-home-day-plan", in: app)
 
@@ -96,7 +96,7 @@ final class CalendarVisitClarityTests: XCTestCase {
         let app = launchCleanApp(extraArguments: [
             "-UIPreferredContentSizeCategoryName", "UIContentSizeCategoryAccessibilityMedium",
         ])
-        completeOnboarding(in: app)
+        openDemoIfNeeded(in: app)
         tap("Calendar", in: app)
         assertVisible("Selected day", in: app)
         // Prefer the mother visit so this still works after another test rescheduled the well-baby day.
@@ -132,15 +132,13 @@ private extension CalendarVisitClarityTests {
         return app
     }
 
-    func completeOnboarding(in app: XCUIApplication) {
+    func openDemoIfNeeded(in app: XCUIApplication) {
         if app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@", "Continue"))
+            .matching(labelPredicate("Open demo"))
             .firstMatch
             .waitForExistence(timeout: 3)
         {
-            tap("Continue", in: app)
-            assertVisible("Create a child profile", in: app)
-            tap("Open day plan", in: app)
+            tap("Open demo", in: app)
         } else {
             // Profile already present from a previous run in this simulator.
             assertVisible("Calendar", in: app)
