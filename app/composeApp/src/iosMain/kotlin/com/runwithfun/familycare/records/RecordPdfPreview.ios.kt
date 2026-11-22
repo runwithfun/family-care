@@ -7,6 +7,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
@@ -30,7 +32,9 @@ internal actual fun RecordPdfPreview(bytes: ByteArray, modifier: Modifier) {
     } else {
         UIKitView(
             factory = { PDFView().apply { autoScales = true } },
-            modifier = modifier.aspectRatio(612f / 792f),
+            modifier = modifier.aspectRatio(612f / 792f).semantics {
+                contentDescription = "Stored clinic PDF preview"
+            },
             update = { it.document = document },
         )
     }
