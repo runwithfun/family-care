@@ -144,6 +144,20 @@ def screenshot(output, name):
             raise RuntimeError(f"{path} is not a PNG screenshot.")
 
 
+def save_relaunch_diagnostics(output):
+    files = (
+        ("FamilyCare-Logcat.log", ("logcat", "-d", "-v", "threadtime")),
+        ("FamilyCare-Profile.xml", ("exec-out", "run-as", PACKAGE, "cat", "shared_prefs/familycare.profile.xml")),
+        ("FamilyCare-Assistant.xml", ("exec-out", "run-as", PACKAGE, "cat", "shared_prefs/family-care-assistant.xml")),
+    )
+    for name, command in files:
+        try:
+            with (output / name).open("wb") as diagnostic:
+                subprocess.run(["adb", *command], stdout=diagnostic, check=True, timeout=20)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            traceback.print_exc()
+
+
 def walkthrough(output):
     find("Care for both of you")
     tap("Continue")
@@ -195,6 +209,7 @@ def main():
         setup_device(args.apk)
         walkthrough(args.output)
     except Exception:
+        save_relaunch_diagnostics(args.output)
         try:
             screenshot(args.output, "FamilyCare-Failure")
             ET.ElementTree(dump_ui()).write(args.output / "Failure-hierarchy.xml", encoding="utf-8")
