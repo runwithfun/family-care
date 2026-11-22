@@ -1,0 +1,63 @@
+name: Android demo smoke
+
+on:
+  push:
+    branches: [test/android-hackathon-smoke]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  emulator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      ANDROID_SERIAL: emulator-5554
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/wrapper-validation@v4
+      - name: Start a fresh Android emulator
+        timeout-minutes: 10
+        run: |
+          if ! test -c /dev/kvm; then
+            echo "::error::The hosted runner does not expose KVM for the Android emulator."
+            exit 1
+          fi
+          sudo chown "$USER" /dev/kvm
+
+          evidence="$RUNNER_TEMP/family-care-android"
+          mkdir -p "$evidence"
+          export ANDROID_AVD_HOME="$RUNNER_TEMP/family-care-avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+
+          tools="$ANDROID_HOME/cmdline-tools/latest/bin"
+          image='system-images;android-35;google_apis;x86_64'
+          "$tools/sdkmanager" --install emulator "$image"
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+          printf 'no\n' | "$tools/avdmanager" create avd -n family-care -k "$image" --device pixel_7
+          nohup "$ANDROID_HOME/emulator/emulator" -avd family-care -port 5554 \
+            -accel on -gpu software -no-window -no-audio -no-boot-anim -no-snapshot \
+            </dev/null > "$evidence/emulator.log" 2>&1 &
+      - name: Build the Android demo
+        working-directory: app
+        run: ./gradlew --no-daemon --max-workers=2 :composeApp:assembleDebug
+      - name: Walk through the synthetic family demo
+        timeout-minutes: 8
+        run: |
+          python3 .github/scripts/android_smoke.py \
+            app/composeApp/build/outputs/apk/debug/composeApp-debug.apk \
+            "$RUNNER_TEMP/family-care-android"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: family-care-android-screens
+          path: ${{ runner.temp }}/family-care-android
+          if-no-files-found: ignore
+          retention-days: 3
