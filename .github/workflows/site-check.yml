@@ -1,0 +1,38 @@
+name: Site check
+
+on:
+  pull_request:
+    paths:
+      - "site/**"
+      - ".github/workflows/site-check.yml"
+      - ".github/workflows/pages.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install and build site
+        working-directory: site
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify base path assets
+        working-directory: site
+        run: |
+          test -f dist/index.html
+          test -f dist/.nojekyll
+          test -f dist/favicon.svg
+          grep -q '/family-care/' dist/index.html
+          ! grep -E 'src="/(src|assets)/' dist/index.html
+          ! grep -E 'href="/(src|assets)/' dist/index.html
