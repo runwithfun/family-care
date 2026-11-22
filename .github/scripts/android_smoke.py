@@ -149,12 +149,13 @@ def save_relaunch_diagnostics(output):
         ("FamilyCare-Logcat.log", ("logcat", "-d", "-v", "threadtime")),
         ("FamilyCare-Profile.xml", ("exec-out", "run-as", PACKAGE, "cat", "shared_prefs/familycare.profile.xml")),
         ("FamilyCare-Assistant.xml", ("exec-out", "run-as", PACKAGE, "cat", "shared_prefs/family-care-assistant.xml")),
+        ("FamilyCare-Calendar.xml", ("exec-out", "run-as", PACKAGE, "cat", "shared_prefs/family-care-plan-events.xml")),
     )
     for name, command in files:
         try:
             with (output / name).open("wb") as diagnostic:
                 subprocess.run(["adb", *command], stdout=diagnostic, check=True, timeout=20)
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
             traceback.print_exc()
 
 
@@ -170,6 +171,10 @@ def walkthrough(output):
     find("November 2026")
     tap("Well-baby visit", prefix=True, scroll=True)
     find("Visit details")
+    find("Booking · Booked")
+    tap("Planned", scroll=True)
+    tap("Save visit", scroll=True)
+    find("Saved · still the same visit.", scroll=True)
 
     tap("Records")
     tap("Import synthetic clinic PDF")
@@ -191,7 +196,12 @@ def walkthrough(output):
     find(follow_up, prefix=True, scroll=True)
     adb("shell", "am", "force-stop", PACKAGE)
     adb("shell", "am", "start", "-W", "-n", ACTIVITY)
-    find("Calendar")
+    tap("Calendar")
+    find("November 2026")
+    tap("Well-baby visit", prefix=True, scroll=True)
+    find("Visit details")
+    find("Booking · Planned")
+    tap("Home")
     root, matches = find(follow_up, prefix=True, scroll=True)
     parents = {child: parent for parent in root.iter() for child in parent}
     rows = {bounds(clickable_node(node, parents)) for node in matches}
