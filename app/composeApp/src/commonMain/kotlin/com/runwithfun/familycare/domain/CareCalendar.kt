@@ -1,6 +1,9 @@
 package com.runwithfun.familycare.domain
 
 object CareCalendar {
+    const val MinYear = 1
+    const val MaxYear = 9999
+
     private val monthNames = listOf(
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December",
@@ -22,6 +25,16 @@ object CareCalendar {
         val nextYear = absolute.floorDiv(12)
         val nextMonth = absolute.mod(12) + 1
         return nextYear to nextMonth
+    }
+
+    fun canShiftMonth(year: Int, month: Int, delta: Int): Boolean {
+        val (nextYear, _) = shiftMonth(year, month, delta)
+        return nextYear in MinYear..MaxYear
+    }
+
+    fun shiftMonthBounded(year: Int, month: Int, delta: Int): Pair<Int, Int>? {
+        if (!canShiftMonth(year, month, delta)) return null
+        return shiftMonth(year, month, delta)
     }
 
     fun clampDay(year: Int, month: Int, day: Int): CareDate =

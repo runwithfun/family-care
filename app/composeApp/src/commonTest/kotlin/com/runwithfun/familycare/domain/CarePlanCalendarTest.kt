@@ -94,4 +94,16 @@ class CarePlanCalendarTest {
         assertEquals(CareDate(2026, 11, 1), cells[6])
         assertEquals(0, cells.size % 7)
     }
+
+    @Test
+    fun monthNavigationStopsAtCareDateYearEdges() {
+        assertTrue(CareCalendar.canShiftMonth(1, 1, 1))
+        assertTrue(!CareCalendar.canShiftMonth(1, 1, -1))
+        assertNull(CareCalendar.shiftMonthBounded(1, 1, -1))
+        assertTrue(CareCalendar.canShiftMonth(9999, 12, -1))
+        assertTrue(!CareCalendar.canShiftMonth(9999, 12, 1))
+        assertNull(CareCalendar.shiftMonthBounded(9999, 12, 1))
+        assertEquals(1 to 2, CareCalendar.shiftMonthBounded(1, 1, 1))
+        assertEquals(9999 to 11, CareCalendar.shiftMonthBounded(9999, 12, -1))
+    }
 }

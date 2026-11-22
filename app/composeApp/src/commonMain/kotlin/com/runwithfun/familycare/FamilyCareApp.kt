@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -43,20 +42,21 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
-import com.runwithfun.familycare.domain.CareEvent
-import com.runwithfun.familycare.domain.CarePlan
-import com.runwithfun.familycare.domain.FamilyRole
+import com.runwithfun.familycare.domain.CareDate
+import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.care_intro
+import com.runwithfun.familycare.session.rememberCareSession
+import com.runwithfun.familycare.ui.CalendarScreen
 import com.runwithfun.familycare.ui.FamilyCareTheme
+import com.runwithfun.familycare.ui.TaskDetailScreen
+import com.runwithfun.familycare.ui.VisitDetailScreen
 import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
 import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
 import com.runwithfun.familycare.ui.home.HomeScreen
 import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
-import com.runwithfun.familycare.ui.home.monthAndDay
-import com.runwithfun.familycare.ui.home.statusLabel
 import com.runwithfun.familycare.ui.onboarding.FamilyOnboardingScreen
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfileState
@@ -72,7 +72,12 @@ private enum class AppTab(val label: String) {
 private sealed interface HomeDetail {
     data object Profile : HomeDetail
     data object Calendar : HomeDetail
-    data class Event(val event: CareEvent, val fromCalendar: Boolean = false) : HomeDetail
+    data class VisitEditor(val visitId: String, val fromCalendar: Boolean) : HomeDetail
+    data class TaskEditor(
+        val taskId: String?,
+        val draftDate: CareDate,
+        val fromCalendar: Boolean,
+    ) : HomeDetail
 }
 
 @Composable
@@ -102,6 +107,7 @@ fun FamilyCareApp() {
 private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
     val photo = rememberFamilyProfilePhoto(photoBytes)
     val plan = remember(childName) { DemoFamily.createPlan(childName) }
+    val session = rememberCareSession(plan)
     val assistant = rememberAssistantActions(plan)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
@@ -109,11 +115,11 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
     var day by remember { mutableStateOf(DemoFamily.today) }
     PlatformBackHandler(enabled = detail != null || tab != AppTab.HOME) {
-        val eventPage = detail as? HomeDetail.Event
-        when {
-            eventPage?.fromCalendar == true -> detail = HomeDetail.Calendar
-            detail != null -> detail = null
-            else -> tab = AppTab.HOME
+        when (val page = detail) {
+            is HomeDetail.VisitEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            is HomeDetail.TaskEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            HomeDetail.Calendar, HomeDetail.Profile -> detail = null
+            null -> tab = AppTab.HOME
         }
     }
 
@@ -126,20 +132,41 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                         Text(child.displayName, style = MaterialTheme.typography.displaySmall)
                         child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
                     }
-                    HomeDetail.Calendar -> Page("Calendar", onBack = { detail = null }) {
-                        Text(day.monthAndDay(), style = MaterialTheme.typography.titleMedium)
-                        val events = plan.eventsOn(day)
-                        if (events.isEmpty()) Text("No events saved for this day.")
-                        for (event in events) {
-                            TextButton(onClick = { detail = HomeDetail.Event(event, fromCalendar = true) }) {
-                                Text(event.title)
-                            }
-                        }
-                    }
-                    is HomeDetail.Event -> EventPage(
-                        event = page.event,
-                        plan = plan,
-                        onBack = { detail = if (page.fromCalendar) HomeDetail.Calendar else null },
+                    HomeDetail.Calendar -> CalendarScreen(
+                        session = session,
+                        selected = day,
+                        onSelectDate = { day = it },
+                        onOpenVisit = { visitId ->
+                            detail = HomeDetail.VisitEditor(visitId, fromCalendar = true)
+                        },
+                        onOpenTask = { taskId ->
+                            detail = HomeDetail.TaskEditor(taskId, day, fromCalendar = true)
+                        },
+                        onAddPlanItem = { date ->
+                            day = date
+                            detail = HomeDetail.TaskEditor(null, date, fromCalendar = true)
+                        },
+                        onBackHome = { detail = null },
+                    )
+                    is HomeDetail.VisitEditor -> VisitDetailScreen(
+                        session = session,
+                        visitId = page.visitId,
+                        onBack = {
+                            detail = if (page.fromCalendar) HomeDetail.Calendar else null
+                        },
+                        onSaved = { date -> day = date },
+                    )
+                    is HomeDetail.TaskEditor -> TaskDetailScreen(
+                        session = session,
+                        taskId = page.taskId,
+                        draftDate = page.draftDate,
+                        onBack = {
+                            detail = if (page.fromCalendar) HomeDetail.Calendar else null
+                        },
+                        onSaved = { savedId, date ->
+                            day = date
+                            detail = HomeDetail.TaskEditor(savedId, date, page.fromCalendar)
+                        },
                     )
                     null -> when (tab) {
                         AppTab.HOME -> HomeScreen(
@@ -149,11 +176,16 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                             today = DemoFamily.today,
                             selectedDay = day,
                             people = people,
-                            eventsOn = { plan.eventsOn(it) },
+                            eventsOn = { session.eventsOn(it) },
                             onSelectDay = { day = it },
                             onOpenProfile = { detail = HomeDetail.Profile },
                             onOpenCalendar = { detail = HomeDetail.Calendar },
-                            onOpenEvent = { detail = HomeDetail.Event(it) },
+                            onOpenEvent = { event ->
+                                detail = when (event) {
+                                    is Visit -> HomeDetail.VisitEditor(event.id, fromCalendar = false)
+                                    is Task -> HomeDetail.TaskEditor(event.id, event.date, fromCalendar = false)
+                                }
+                            },
                         )
                         AppTab.RECORDS -> Page("Records") {
                             for (document in plan.documents) {
@@ -165,6 +197,7 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                             child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
                         }
                         AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
+                            session.notifyChanged()
                             day = assistant.task.date
                             tab = AppTab.HOME
                         }
@@ -178,23 +211,6 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                     detail = null
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun EventPage(event: CareEvent, plan: CarePlan, onBack: () -> Unit) {
-    Page(event.title, onBack = onBack) {
-        val person = plan.people.first { it.id == event.personId }
-        Text(if (person.role == FamilyRole.MOTHER) "For you" else person.displayName)
-        Text(listOfNotNull(event.date.monthAndDay(), event.time?.toString()).joinToString(" · "))
-        event.statusLabel()?.let { Text(it) }
-        if (event is Visit) Text(event.provider)
-        val source = plan.documents.firstOrNull { it.id == event.sourceDocumentId }
-        if (source != null) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text("Source document", style = MaterialTheme.typography.labelLarge)
-            Text(source.original.fileName)
         }
     }
 }
