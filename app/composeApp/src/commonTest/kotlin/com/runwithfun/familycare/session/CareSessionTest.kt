@@ -8,6 +8,7 @@ import com.runwithfun.familycare.domain.Visit
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -139,8 +140,10 @@ class CareSessionTest {
         )
         val encoded = encodeCarePlanEvents(CarePlanEventSnapshot(3, listOf(visit, task)))
         val decoded = decodeCarePlanEvents(encoded)
+        assertFalse(encoded.endsWith('\n'))
         assertEquals(3, decoded.nextLocalId)
         assertEquals(listOf(visit, task), decoded.events)
+        assertEquals(decoded, decodeCarePlanEvents("$encoded\n    "))
     }
 
     private class MemoryCarePlanEventStore(
