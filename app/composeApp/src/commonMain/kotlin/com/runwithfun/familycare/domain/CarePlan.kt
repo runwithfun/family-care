@@ -12,17 +12,24 @@ class CarePlan(
     immunizationReferences: List<ImmunizationReference>,
 ) {
     val people: List<FamilyMember> = people.toList()
-    val documents: List<CareDocument> = documents.map { it.copy(fields = it.fields.toList()) }
     val recordedImmunizations: List<RecordedImmunization> = recordedImmunizations.toList()
     val immunizationReferences: List<ImmunizationReference> = immunizationReferences.toList()
 
     private val peopleById = this.people.associateBy { it.id }
-    private val documentsById = this.documents.associateBy { it.id }
+    private val documentsById = AtomicReference(
+        documents.associate { it.id to it.copy(fields = it.fields.toList()) },
+    )
     private val eventsById = AtomicReference(events.associateBy { it.id })
 
+    val documents: List<CareDocument>
+        get() = documentsById.load().values
+            .sortedBy { it.id }
+            .map { it.copy(fields = it.fields.toList()) }
+
     init {
+        val initialDocuments = documentsById.load()
         require(peopleById.size == people.size) { "Person IDs must be unique" }
-        require(documentsById.size == documents.size) { "Document IDs must be unique" }
+        require(initialDocuments.size == documents.size) { "Document IDs must be unique" }
         require(eventsById.load().size == events.size) { "Event IDs must be unique" }
         require(people.all { it.id.isNotBlank() }) { "Person IDs must not be blank" }
         require(documents.all { it.id.isNotBlank() && it.personId in peopleById }) {
@@ -30,10 +37,32 @@ class CarePlan(
         }
         for (event in events) validateEvent(event, eventsById.load())
         for (record in recordedImmunizations) {
-            val source = documentsById[record.sourceDocumentId]
+            val source = initialDocuments[record.sourceDocumentId]
             require(source?.personId == record.personId && source.kind == DocumentKind.IMMUNIZATION_RECORD) {
                 "An immunization must link to its person's immunization record"
             }
+        }
+    }
+
+    fun document(id: String): CareDocument? =
+        documentsById.load()[id]?.let { it.copy(fields = it.fields.toList()) }
+
+    /**
+     * Records a parent decision for one extracted field.
+     * Pass [FieldReview] with a null value to leave the field explicitly unresolved.
+     * Does not invent immunizations or other clinical facts.
+     */
+    fun reviewField(documentId: String, fieldLabel: String, review: FieldReview) {
+        while (true) {
+            val current = documentsById.load()
+            val document = current[documentId]
+                ?: throw IllegalArgumentException("Unknown document: $documentId")
+            val index = document.fields.indexOfFirst { it.label == fieldLabel }
+            require(index >= 0) { "Unknown field \"$fieldLabel\" on document $documentId" }
+            val updatedFields = document.fields.toMutableList()
+            updatedFields[index] = updatedFields[index].copy(review = review)
+            val updated = document.copy(fields = updatedFields)
+            if (documentsById.compareAndSet(current, current + (documentId to updated))) return
         }
     }
 
@@ -41,6 +70,12 @@ class CarePlan(
         eventsById.load().values
             .filter { it.date == date && (personId == null || it.personId == personId) }
             .sortedWith(compareBy<CareEvent> { it.time == null }.thenBy { it.time }.thenBy { it.id })
+
+    fun appointments(personId: String? = null): List<Visit> =
+        eventsById.load().values
+            .filterIsInstance<Visit>()
+            .filter { personId == null || it.personId == personId }
+            .sortedWith(compareBy<Visit> { it.date.toString() }.thenBy { it.time == null }.thenBy { it.time }.thenBy { it.id })
 
     fun addEvent(event: CareEvent) {
         while (true) {
@@ -64,7 +99,7 @@ class CarePlan(
         require(event.id.isNotBlank()) { "Event ID must not be blank" }
         require(event.personId in peopleById) { "Unknown event owner: ${event.personId}" }
         event.sourceDocumentId?.let { sourceId ->
-            require(documentsById[sourceId]?.personId == event.personId) {
+            require(documentsById.load()[sourceId]?.personId == event.personId) {
                 "The source document must belong to the event owner"
             }
         }

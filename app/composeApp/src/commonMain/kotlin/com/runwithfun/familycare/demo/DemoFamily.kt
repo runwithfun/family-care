@@ -25,9 +25,23 @@ object DemoFamily {
     val today = CareDate(2026, 11, 23)
 
     private const val recoveryVisitId = "demo-recovery-visit"
-    private const val recoveryDocumentId = "demo-recovery-note"
-    private const val immunizationDocumentId = "demo-immunizations"
+    const val recoveryDocumentId = "demo-recovery-note"
+    const val immunizationDocumentId = "demo-immunizations"
     private val immunizationDate = CareDate(2026, 11, 2)
+
+    /** Synthetic clinic PDF text kept on-device as the retrievable original. */
+    val immunizationPdfText =
+        """
+        Example Family Clinic — Immunization record (synthetic demo PDF)
+        Patient: Maya
+        Date of birth: 2026-09-28
+
+        Documented doses on this copy:
+        Example immunization A: $immunizationDate
+
+        Example immunization B: not listed on this copy.
+        Contact the clinic for a complete record before assuming any missing dose status.
+        """.trimIndent()
 
     val recoveryQuestion = AssistantProposal(
         Task(
@@ -70,6 +84,7 @@ object DemoFamily {
                 personId = childId,
                 title = "Request a copy of the immunization record",
                 date = today,
+                sourceDocumentId = immunizationDocumentId,
             ),
         ),
         documents = listOf(
@@ -91,6 +106,7 @@ object DemoFamily {
                         proposal = ExtractedValue("14:30", "Follow-up booked at 14:30."),
                         review = FieldReview("14:30"),
                     ),
+                    // Missing extraction — stays unresolved until the parent asks the clinic.
                     DocumentField(label = "Clinician name"),
                 ),
             ),
@@ -99,20 +115,21 @@ object DemoFamily {
                 personId = childId,
                 kind = DocumentKind.IMMUNIZATION_RECORD,
                 original = DocumentOriginal(
-                    fileName = "demo-immunizations.txt",
-                    mediaType = "text/plain",
-                    content = OriginalContent.Text(
-                        "Fictional record for demonstration. Example immunization A: $immunizationDate.",
-                    ),
+                    fileName = "demo-immunizations.pdf",
+                    mediaType = "application/pdf",
+                    content = OriginalContent.Text(immunizationPdfText),
                 ),
                 fields = listOf(
                     DocumentField(
-                        label = "Administration date",
+                        label = "Example immunization A date",
                         proposal = ExtractedValue(
                             immunizationDate.toString(),
-                            "Example immunization A: $immunizationDate.",
+                            "Example immunization A: $immunizationDate",
                         ),
+                        review = FieldReview(immunizationDate.toString()),
                     ),
+                    // No extracted date — must not invent a vaccine status.
+                    DocumentField(label = "Example immunization B date"),
                 ),
             ),
         ),
