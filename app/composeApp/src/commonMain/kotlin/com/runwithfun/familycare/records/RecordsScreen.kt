@@ -242,12 +242,13 @@ private fun DocumentDetail(
     // Observe controller revision so Save refreshes field state.
     records.revision
     val current = records.document(document.id) ?: document
+    val isImportedPdf = current.original.content is OriginalContent.ImportedPdf
 
     TextButton(onClick = onBack) {
         Text("Back to records")
     }
     Text(
-        kindLabel(current.kind),
+        if (isImportedPdf) "Clinic PDF" else kindLabel(current.kind),
         modifier = Modifier.semantics { heading() },
         style = MaterialTheme.typography.headlineLarge,
     )
@@ -255,7 +256,7 @@ private fun DocumentDetail(
         "${person.displayName} · ${current.original.fileName}",
         style = MaterialTheme.typography.bodyMedium,
     )
-    if (current.original.content is OriginalContent.ImportedPdf) {
+    if (isImportedPdf) {
         Text("Original PDF · review the document for details", style = MaterialTheme.typography.bodyMedium)
     } else if (current.kind == DocumentKind.IMMUNIZATION_RECORD && current.hasGaps()) {
         Text("Some immunization details still need review.", style = MaterialTheme.typography.bodyMedium)
@@ -265,8 +266,8 @@ private fun DocumentDetail(
         val stack = maxWidth < NarrowWidth
         if (stack) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OriginalPanel(records, current)
-                if (current.fields.isNotEmpty()) ExtractedPanel(records, current)
+                OriginalPanel(records, current, modifier = Modifier.fillMaxWidth())
+                if (current.fields.isNotEmpty()) ExtractedPanel(records, current, modifier = Modifier.fillMaxWidth())
             }
         } else {
             Row(
