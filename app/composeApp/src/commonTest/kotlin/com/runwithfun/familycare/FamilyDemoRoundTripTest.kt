@@ -26,7 +26,14 @@ import kotlin.test.assertTrue
 class FamilyDemoRoundTripTest {
     @Test
     fun relaunchRestoresTheSharedPlanWithTheOriginalRecordAndAnEditedAssistantTask() {
-        val assistantStore = MemoryStringStore()
+        val assistantStore = object : AssistantActionStorage {
+            private var confirmedId: String? = null
+            override fun read(): String? = confirmedId
+
+            override fun write(actionId: String?) {
+                confirmedId = actionId
+            }
+        }
         val noteStore = MemoryStringStore()
         val calendarStore = MemoryStringStore()
         val recordsStore = InMemoryRecordsLocalStore()
@@ -79,7 +86,7 @@ class FamilyDemoRoundTripTest {
         assertTrue(field.isExplicitlyUnresolved())
     }
 
-    private class MemoryStringStore : AssistantActionStorage, GrowingNotesStorage, CarePlanEventStore {
+    private class MemoryStringStore : GrowingNotesStorage, CarePlanEventStore {
         private var value: String? = null
         override fun read(): String? = value
         override fun load(): String? = value
