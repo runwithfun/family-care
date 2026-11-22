@@ -75,7 +75,7 @@ fun SettingsScreen(
 fun EditProfileScreen(
     profile: FamilyProfile,
     saveFailed: Boolean,
-    onSave: (String, CareDate, String, ByteArray?) -> Boolean,
+    onSave: (String, CareDate?, String, ByteArray?) -> Boolean,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -88,11 +88,12 @@ fun EditProfileScreen(
         initialPhoto = profile.photoBytes,
     )
     var localSaveFailed by remember { mutableStateOf(false) }
+    val birthDateRequired = profile.birthDate != null
 
     fun submit() {
-        val birthDate = draft.validatedBirthDate()
+        val birthDate = draft.validatedBirthDate(required = birthDateRequired)
         val name = draft.name.trim()
-        if (name.isEmpty() || birthDate == null || draft.photoPending) return
+        if (name.isEmpty() || draft.birthDateError != null || draft.photoPending) return
         focus.clearFocus()
         val ok = onSave(name, birthDate, draft.notes.trim(), draft.photoBytes)
         localSaveFailed = !ok
@@ -105,7 +106,7 @@ fun EditProfileScreen(
             color = colors.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
-        ChildProfileFields(state = draft, onSubmit = ::submit)
+        ChildProfileFields(state = draft, birthDateRequired = birthDateRequired, onSubmit = ::submit)
         if (saveFailed || localSaveFailed) {
             Text(
                 "Couldn't save the profile. Try again.",
