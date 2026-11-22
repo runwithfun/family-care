@@ -49,7 +49,22 @@ jobs:
             </dev/null > "$evidence/emulator.log" 2>&1 &
       - name: Build the Android demo
         working-directory: app
-        run: ./gradlew --no-daemon --max-workers=2 :composeApp:assembleDebug
+        run: |
+          cat > "$RUNNER_TEMP/central-mirror.gradle" <<'GRADLE'
+          import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+
+          gradle.settingsEvaluated { settings ->
+              [settings.pluginManagement.repositories, settings.dependencyResolutionManagement.repositories].each { repositories ->
+                  repositories.withType(MavenArtifactRepository).each { repository ->
+                      if (repository.url.host == 'repo.maven.apache.org') {
+                          repository.setUrl('https://maven-central.storage-download.googleapis.com/maven2/')
+                      }
+                  }
+              }
+          }
+          GRADLE
+          ./gradlew --no-daemon --max-workers=2 --init-script "$RUNNER_TEMP/central-mirror.gradle" \
+            :composeApp:assembleDebug
       - name: Walk through the synthetic family demo
         timeout-minutes: 8
         run: |
