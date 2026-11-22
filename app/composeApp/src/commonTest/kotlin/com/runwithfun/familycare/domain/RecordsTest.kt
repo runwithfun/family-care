@@ -35,7 +35,9 @@ class RecordsTest {
         val bytes = files.readBytes(DemoFamily.immunizationPdfStorageKey)
         assertNotNull(bytes)
         assertTrue(bytes.isPdfHeader())
-        assertTrue(bytes.containsLatin1("Example immunization A"))
+        assertTrue(bytes.containsLatin1(DemoFamily.immunizationDocumentDateExcerpt))
+        assertTrue(bytes.containsLatin1(DemoFamily.missingImmunizationExcerpt))
+        assertTrue(bytes.containsLatin1(DemoFamily.noVaccinationEntriesExcerpt))
         assertTrue(bytes.containsLatin1("Date of birth: $birthDate"))
 
         val opened = records.reopenOriginal(DemoFamily.immunizationDocumentId)
@@ -67,17 +69,40 @@ class RecordsTest {
     }
 
     @Test
+    fun earlierSyntheticPdfAndReviewDoNotAppearAsTheCurrentExtract() {
+        val documentId = DemoFamily.immunizationDocumentId
+        val store = InMemoryRecordsLocalStore(
+            mapOf(DocumentReviewStore.ReviewsKey to "$documentId\tExample immunization A date\t2026-11-02"),
+        )
+        val files = DocumentFileStore(store)
+        val oldKey = "documents/demo-immunizations.pdf"
+        val oldPdf = buildSyntheticClinicPdf("Example immunization A: 2026-11-02")
+        files.writeBytes(oldKey, oldPdf)
+        val plan = DemoFamily.createPlan()
+        val records = RecordsController(plan, files, DocumentReviewStore(store))
+
+        assertFalse(records.isPdfImported())
+        assertTrue(records.importSyntheticImmunizationPdf())
+        val current = assertNotNull(records.reopenOriginal(documentId)?.pdfBytes)
+        assertTrue(current.containsLatin1(DemoFamily.noVaccinationEntriesExcerpt))
+        assertFalse(current.containsLatin1("Example immunization A"))
+        assertContentEquals(oldPdf, files.readBytes(oldKey))
+        assertTrue(assertNotNull(records.document(documentId)).fields.all { it.review == null })
+        assertTrue(plan.recordedImmunizations.isEmpty())
+    }
+
+    @Test
     fun reviewsPersistAcrossNewPlanAndStoreReloadAndDetailObservesSave() {
         val shared = InMemoryRecordsLocalStore()
         val firstPlan = DemoFamily.createPlan()
         val first = RecordsController(firstPlan, DocumentFileStore(shared), DocumentReviewStore(shared))
 
-        assertTrue(first.leaveUnresolved(DemoFamily.immunizationDocumentId, DemoFamily.immunizationBField))
-        assertTrue(first.saveCorrection(DemoFamily.immunizationDocumentId, DemoFamily.immunizationAField, "2026-11-02"))
+        assertTrue(first.leaveUnresolved(DemoFamily.immunizationDocumentId, DemoFamily.administrationDateField))
+        assertTrue(first.saveCorrection(DemoFamily.immunizationDocumentId, DemoFamily.immunizationDocumentDateField, "2026-11-02"))
         val afterSave = first.document(DemoFamily.immunizationDocumentId)!!
-        assertEquals("2026-11-02", afterSave.fields.single { it.label == DemoFamily.immunizationAField }.review?.value)
-        assertTrue(afterSave.fields.single { it.label == DemoFamily.immunizationBField }.isExplicitlyUnresolved())
-        assertFalse(afterSave.fields.single { it.label == DemoFamily.immunizationBField }.isUntouched())
+        assertEquals("2026-11-02", afterSave.fields.single { it.label == DemoFamily.immunizationDocumentDateField }.review?.value)
+        assertTrue(afterSave.fields.single { it.label == DemoFamily.administrationDateField }.isExplicitlyUnresolved())
+        assertFalse(afterSave.fields.single { it.label == DemoFamily.administrationDateField }.isUntouched())
         assertEquals(2, first.revision)
 
         val secondPlan = DemoFamily.createPlan()
@@ -87,17 +112,17 @@ class RecordsTest {
             DocumentReviewStore(InMemoryRecordsLocalStore(shared.snapshot())),
         )
         val restored = reloaded.document(DemoFamily.immunizationDocumentId)!!
-        val fieldA = restored.fields.single { it.label == DemoFamily.immunizationAField }
-        val fieldB = restored.fields.single { it.label == DemoFamily.immunizationBField }
+        val fieldA = restored.fields.single { it.label == DemoFamily.immunizationDocumentDateField }
+        val fieldB = restored.fields.single { it.label == DemoFamily.administrationDateField }
         assertEquals("2026-11-02", fieldA.review?.value)
         assertTrue(fieldB.isExplicitlyUnresolved())
         assertFalse(fieldB.isUntouched())
         assertTrue(
-            reloaded.fieldStatusLabel(DemoFamily.immunizationDocumentId, DemoFamily.immunizationBField)
+            reloaded.fieldStatusLabel(DemoFamily.immunizationDocumentId, DemoFamily.administrationDateField)
                 .contains("Explicitly unresolved"),
         )
         assertTrue(
-            first.fieldStatusLabel(DemoFamily.immunizationDocumentId, DemoFamily.immunizationAField)
+            first.fieldStatusLabel(DemoFamily.immunizationDocumentId, DemoFamily.immunizationDocumentDateField)
                 .contains("Confirmed"),
         )
     }
@@ -106,14 +131,14 @@ class RecordsTest {
     fun untouchedProposalDiffersFromExplicitUnresolved() {
         val plan = DemoFamily.createPlan()
         val fieldA = plan.document(DemoFamily.immunizationDocumentId)!!
-            .fields.single { it.label == DemoFamily.immunizationAField }
+            .fields.single { it.label == DemoFamily.immunizationDocumentDateField }
         assertTrue(fieldA.isUntouched())
         assertNotNull(fieldA.proposal)
         assertFalse(fieldA.isExplicitlyUnresolved())
 
-        plan.reviewField(DemoFamily.immunizationDocumentId, DemoFamily.immunizationAField, FieldReview(null))
+        plan.reviewField(DemoFamily.immunizationDocumentId, DemoFamily.immunizationDocumentDateField, FieldReview(null))
         val unresolved = plan.document(DemoFamily.immunizationDocumentId)!!
-            .fields.single { it.label == DemoFamily.immunizationAField }
+            .fields.single { it.label == DemoFamily.immunizationDocumentDateField }
         assertTrue(unresolved.isExplicitlyUnresolved())
         assertFalse(unresolved.isUntouched())
     }
@@ -136,7 +161,7 @@ class RecordsTest {
         val plan = DemoFamily.createPlan()
         val records = RecordsController(plan, DocumentFileStore(store), DocumentReviewStore(store))
         val documentId = DemoFamily.immunizationDocumentId
-        val fieldLabel = DemoFamily.immunizationAField
+        val fieldLabel = DemoFamily.immunizationDocumentDateField
         assertTrue(records.saveCorrection(documentId, fieldLabel, "2026-11-02"))
         val goodSnapshot = backing.snapshot()
 
@@ -155,36 +180,35 @@ class RecordsTest {
     fun typedDateAndTimeAreValidatedBeforeReview() {
         assertTrue(validateReviewInput("Follow-up time", "14:30") is FieldValidationResult.Ok)
         assertTrue(validateReviewInput("Follow-up time", "25:90") is FieldValidationResult.Invalid)
-        assertTrue(validateReviewInput(DemoFamily.immunizationAField, "2026-11-02") is FieldValidationResult.Ok)
-        assertTrue(validateReviewInput(DemoFamily.immunizationAField, "11/02/2026") is FieldValidationResult.Invalid)
+        assertTrue(validateReviewInput(DemoFamily.immunizationDocumentDateField, "2026-11-02") is FieldValidationResult.Ok)
+        assertTrue(validateReviewInput(DemoFamily.immunizationDocumentDateField, "11/02/2026") is FieldValidationResult.Invalid)
 
         val store = InMemoryRecordsLocalStore()
         val records = RecordsController(DemoFamily.createPlan(), DocumentFileStore(store), DocumentReviewStore(store))
-        assertFalse(records.saveCorrection(DemoFamily.immunizationDocumentId, DemoFamily.immunizationAField, "not-a-date"))
+        assertFalse(records.saveCorrection(DemoFamily.immunizationDocumentId, DemoFamily.immunizationDocumentDateField, "not-a-date"))
         assertNotNull(records.lastErrorDetail)
         assertNull(
             records.document(DemoFamily.immunizationDocumentId)!!
-                .fields.single { it.label == DemoFamily.immunizationAField }.review,
+                .fields.single { it.label == DemoFamily.immunizationDocumentDateField }.review,
         )
     }
 
     @Test
-    fun recordedImmunizationStaysSourceSnapshotWhenReviewChanges() {
+    fun editingAdministrationFieldCannotEstablishADose() {
         val store = InMemoryRecordsLocalStore()
         val plan = DemoFamily.createPlan()
         val records = RecordsController(plan, DocumentFileStore(store), DocumentReviewStore(store))
-        assertTrue(records.saveCorrection(DemoFamily.immunizationDocumentId, DemoFamily.immunizationAField, "2026-11-05"))
-
-        val snapshot = records.recordedDoseSnapshot(DemoFamily.immunizationDocumentId, DemoFamily.immunizationAName)
-        assertNotNull(snapshot)
-        assertEquals(DemoFamily.immunizationDate, snapshot.dateAdministered)
+        assertTrue(records.importSyntheticImmunizationPdf())
+        val documentId = DemoFamily.immunizationDocumentId
+        val original = assertNotNull(records.reopenOriginal(documentId)?.pdfBytes)
+        assertTrue(records.saveCorrection(documentId, DemoFamily.administrationDateField, "2026-11-05"))
         assertEquals(
             "2026-11-05",
-            records.document(DemoFamily.immunizationDocumentId)!!
-                .fields.single { it.label == DemoFamily.immunizationAField }.review?.value,
+            records.document(documentId)!!.fields.single { it.label == DemoFamily.administrationDateField }.review?.value,
         )
-        assertEquals(listOf("Example immunization A"), plan.recordedImmunizations.map { it.name })
-        assertTrue(plan.recordedImmunizations.none { it.name.contains("B") })
+        assertContentEquals(original, records.reopenOriginal(documentId)?.pdfBytes)
+        assertTrue(original.containsLatin1(DemoFamily.missingImmunizationExcerpt))
+        assertTrue(plan.recordedImmunizations.isEmpty())
     }
 
     @Test

@@ -59,7 +59,7 @@ class FamilyDemoRoundTripTest {
         assertEquals(movedVisit.id, note.forVisitId)
 
         val documentId = DemoFamily.immunizationDocumentId
-        val missingField = DemoFamily.immunizationBField
+        val missingField = DemoFamily.administrationDateField
         assertTrue(records.importSyntheticImmunizationPdf())
         assertTrue(records.leaveUnresolved(documentId, missingField))
         val original = assertNotNull(records.reopenOriginal(documentId)?.pdfBytes)

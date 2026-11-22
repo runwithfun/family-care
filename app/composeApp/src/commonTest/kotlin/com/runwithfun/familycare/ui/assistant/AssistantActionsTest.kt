@@ -5,6 +5,8 @@ import com.runwithfun.familycare.domain.CareDate
 import com.runwithfun.familycare.domain.CarePlan
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.domain.VisitStatus
+import com.runwithfun.familycare.session.CarePlanEventStore
+import com.runwithfun.familycare.session.CareSession
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -109,6 +111,35 @@ class AssistantActionsTest {
         assertFalse(actions.confirmed)
         assertEquals(listOf(existingTask), plan.eventsOn(task.date).filter { it.id == task.id })
         assertNull(storage.value)
+    }
+
+    @Test
+    fun legacyAddToTodayMigratesAndKeepsLaterCalendarEdits() {
+        val original = DemoFamily.recoveryQuestion.task
+        val legacy = MemoryStorage(original.id)
+        val events = object : CarePlanEventStore {
+            private var value: String? = null
+
+            override fun load() = value
+
+            override fun save(value: String) {
+                this.value = value
+            }
+        }
+        val firstPlan = DemoFamily.createPlan()
+        val firstSession = CareSession(firstPlan, events)
+        assertTrue(AssistantActions(firstPlan, legacy, firstSession).confirmed)
+        assertEquals(original, firstSession.event(original.id))
+
+        val edited = original.copy(title = "Bring my updated recovery notes", date = CareDate(2026, 11, 24))
+        firstSession.saveTask(edited)
+        val reopenedPlan = DemoFamily.createPlan()
+        val reopenedSession = CareSession(reopenedPlan, events)
+        val reopened = AssistantActions(reopenedPlan, legacy, reopenedSession)
+        assertTrue(reopened.confirm())
+        assertEquals(edited, reopened.task)
+        assertEquals(edited, reopenedSession.event(original.id))
+        assertEquals(0, legacy.writes)
     }
 
     private class MemoryStorage(

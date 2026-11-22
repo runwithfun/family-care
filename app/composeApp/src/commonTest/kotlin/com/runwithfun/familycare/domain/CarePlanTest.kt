@@ -20,6 +20,10 @@ class CarePlanTest {
             plan.eventsOn(DemoFamily.today, DemoFamily.childId).map { it.title },
         )
         assertTrue(plan.eventsOn(CareDate(2026, 11, 24)).isEmpty())
+        assertEquals(
+            CareTime(14, 30),
+            plan.eventsOn(DemoFamily.recoveryVisitDate, DemoFamily.motherId).single().time,
+        )
     }
 
     @Test

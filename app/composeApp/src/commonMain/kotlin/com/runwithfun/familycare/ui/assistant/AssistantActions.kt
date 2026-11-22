@@ -11,6 +11,7 @@ import com.runwithfun.familycare.domain.OriginalContent
 import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.domain.VisitStatus
+import com.runwithfun.familycare.session.CareSession
 
 private const val RecoveryExcerpt = "Bring any questions about your recovery."
 
@@ -25,14 +26,15 @@ internal interface AssistantActionStorage {
 internal expect fun rememberAssistantActionStorage(): AssistantActionStorage
 
 @Composable
-fun rememberAssistantActions(plan: CarePlan): AssistantActions {
+fun rememberAssistantActions(session: CareSession): AssistantActions {
     val storage = rememberAssistantActionStorage()
-    return remember(plan, storage) { AssistantActions(plan, storage) }
+    return remember(session, storage) { AssistantActions(session.plan, storage, session) }
 }
 
 class AssistantActions internal constructor(
     private val plan: CarePlan,
     private val storage: AssistantActionStorage,
+    private val session: CareSession? = null,
 ) {
     private val proposal = DemoFamily.recoveryQuestion
 
@@ -55,7 +57,7 @@ class AssistantActions internal constructor(
             if (!hasSource || confirmed) return false
             val visit = currentVisit ?: return true
             val scheduled = visit.status == VisitStatus.BOOKED || visit.status == VisitStatus.PLANNED
-            return !scheduled || visit.personId != proposal.task.personId || visit.date != proposal.task.date
+            return !scheduled || visit.personId != proposal.task.personId || visit.date != DemoFamily.recoveryVisitDate
         }
     val canConfirm: Boolean
         get() = hasSource && !visitHasChanged
@@ -67,8 +69,9 @@ class AssistantActions internal constructor(
 
     init {
         try {
-            if (hasSource && storage.read() == task.id) {
-                plan.confirm(proposal)
+            val persistedTask = session?.event(proposal.task.id) as? Task
+            if (hasSource && (persistedTask != null || storage.read() == task.id)) {
+                if (persistedTask == null) saveTask()
                 confirmed = true
             }
         } catch (error: Exception) {
@@ -83,12 +86,12 @@ class AssistantActions internal constructor(
             val previousActionId = storage.read()
             try {
                 storage.write(task.id)
-                plan.confirm(proposal)
+                saveTask()
             } catch (error: Exception) {
                 try {
                     storage.write(previousActionId)
                 } catch (rollbackError: Exception) {
-                    println("Could not roll back local assistant action ${task.id}\n${rollbackError.stackTraceToString()}")
+                    println("Could not roll back local assistant action ${task.id}\n${rollbackError.stackTraceToString()}\nRequest: ${proposal.task}")
                 }
                 throw error
             }
@@ -101,8 +104,18 @@ class AssistantActions internal constructor(
         }
     }
 
+    private fun saveTask() {
+        if (session == null) {
+            plan.confirm(proposal)
+        } else {
+            val existing = session.event(proposal.task.id)
+            require(existing == null || existing == proposal.task) { "Event ID already exists with different details: ${proposal.task.id}" }
+            if (existing == null) session.saveTask(proposal.task)
+        }
+    }
+
     private fun reportFailure(operation: String, error: Exception) {
-        println("Could not $operation local assistant action ${task.id}\n${error.stackTraceToString()}")
+        println("Could not $operation local assistant action ${task.id}\n${error.stackTraceToString()}\nRequest: ${proposal.task}")
         errorMessage = "Could not $operation the follow-up on this device."
     }
 }
