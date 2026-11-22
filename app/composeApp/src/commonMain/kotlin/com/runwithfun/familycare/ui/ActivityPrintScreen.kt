@@ -1,6 +1,7 @@
 package com.runwithfun.familycare.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -195,15 +197,19 @@ fun ActivityPrintScreen(
             }
 
             HorizontalDivider(color = colors.outlineVariant)
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("Source", style = type.labelLarge, color = colors.onSurfaceVariant)
-                TextButton(
-                    onClick = { uriHandler.openUri(activity.sourceUrl) },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                ) {
-                    Text(activity.sourceLabel, textDecoration = TextDecoration.Underline)
-                }
+                Text(
+                    activity.sourceLabel,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .clickable(role = Role.Button) { uriHandler.openUri(activity.sourceUrl) }
+                        .padding(vertical = 6.dp),
+                    style = type.bodyLarge,
+                    color = colors.secondary,
+                    textDecoration = TextDecoration.Underline,
+                )
             }
         }
     }
