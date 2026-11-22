@@ -74,6 +74,7 @@ fun VisitDetailScreen(
     val colors = MaterialTheme.colorScheme
     val draftDate = parseCareDate(dateText)
     val draftTime = parseCareTime(timeText)
+    val lastSupportedDate = CareDate(CareCalendar.MaxYear, 12, 31)
     val scheduleChanged = draftDate != visit.date || draftTime != visit.time
 
     fun attemptSave(asReschedule: Boolean) {
@@ -117,9 +118,10 @@ fun VisitDetailScreen(
         }
     }
 
-    fun moveByDays(days: Int) {
+    fun moveOneDayLater() {
         val base = parseCareDate(dateText) ?: visit.date
-        dateText = CareCalendar.shiftDay(base, days).toString()
+        if (base == lastSupportedDate) return
+        dateText = CareCalendar.shiftDay(base, 1).toString()
         savedNotice = null
         error = null
     }
@@ -206,8 +208,9 @@ fun VisitDetailScreen(
                 )
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
-                        onClick = { moveByDays(1) },
+                        onClick = ::moveOneDayLater,
                         modifier = Modifier.heightIn(min = 44.dp),
+                        enabled = (draftDate ?: visit.date) != lastSupportedDate,
                     ) {
                         Text("Move 1 day later")
                     }

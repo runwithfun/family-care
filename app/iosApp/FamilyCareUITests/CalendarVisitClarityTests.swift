@@ -192,11 +192,5 @@ private extension CalendarVisitClarityTests {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
-
-        // Also write PNGs the PR can attach without digging through xcresult.
-        let png = shot.pngRepresentation
-        let dir = URL(fileURLWithPath: "/Users/marianikolaeva/Documents/family-care-wt-40/review/40-screenshots", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? png.write(to: dir.appendingPathComponent("\(name).png"), options: .atomic)
     }
 }
