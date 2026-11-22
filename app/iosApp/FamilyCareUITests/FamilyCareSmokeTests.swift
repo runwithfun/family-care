@@ -46,10 +46,17 @@ final class FamilyCareSmokeTests: XCTestCase {
         assertSingleAgendaItem(followUp, in: app)
 
         tap("Growing up", in: app)
-        tap("Early infant", in: app, startsWith: true)
-        assertVisible("Observations · 2–4 months", in: app)
-        tap("Open activity", in: app)
+        assertVisible("Supervised tummy time", in: app)
+        assertVisible("Suggested for Maya · 0–2 months", in: app)
+        let openCard = app.buttons.matching(labelPredicate("Open printable card")).firstMatch
+        XCTAssertTrue(openCard.isHittable, "The printable card should be reachable without scrolling.")
+        capture("FamilyCare-GrowingUp", in: app)
+        tap("2–4 months", in: app)
         assertVisible("Reach and grasp play", in: app)
+        XCTAssertTrue(openCard.isHittable, "Changing the age should keep the printable card in view.")
+        openCard.tap()
+        assertVisible("For Maya · 2–4 months", in: app)
+        capture("FamilyCare-PlayCard", in: app)
 
         tap("A4", in: app)
         let selectedA4 = app.descendants(matching: .any)
@@ -58,7 +65,7 @@ final class FamilyCareSmokeTests: XCTestCase {
             .firstMatch
         XCTAssertTrue(selectedA4.waitForExistence(timeout: 5), "The A4 paper option should be selected.")
 
-        tap("Export PDF", in: app)
+        tap("Print or save PDF", in: app)
         let shareSheetContent = app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "label CONTAINS[c] %@ OR label == %@ OR label == %@",

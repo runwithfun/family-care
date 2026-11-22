@@ -34,7 +34,7 @@ See [AGENTS.md](AGENTS.md) for coordination and verification rules.
 2. Open the **Well-baby visit** from Today. In **Calendar**, move it to another date and keep it **Booked**. Leave the **Recovery follow-up** on the demo day for the Assistant step.
 3. In **Records**, tap **Import synthetic clinic PDF**. Open the immunization record to retrieve the original PDF and review a field. The missing dose date can stay unresolved. Confirmed appointments and published schedule references are shown separately.
 4. In **Assistant**, tap **Open original note**, then **Add to Today** on the sample follow-up. The task appears under **For you**. Restart the app to see the same saved item.
-5. In **Growing up**, switch between the two age stages. Save a note for the next open visit, then open an activity and use **Export PDF** with A4 or US Letter.
+5. In **Growing up**, choose an age and tap **Open printable card**. Pick A4 or US Letter, then tap **Print or save PDF**. Observations sit below the play card, where you can save a note for the next open visit.
 
 ## Shared demo model
 
