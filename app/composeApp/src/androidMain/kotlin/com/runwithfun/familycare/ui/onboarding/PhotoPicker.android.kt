@@ -31,6 +31,7 @@ internal actual fun rememberOnboardingPhotoPicker(onResult: (OnboardingPhotoResu
     val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
         if (uri != null) {
+            onResult(OnboardingPhotoResult.Loading)
             scope.launch {
                 val result = withContext(Dispatchers.IO) {
                     try {

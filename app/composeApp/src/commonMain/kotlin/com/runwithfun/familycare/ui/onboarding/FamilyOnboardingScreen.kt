@@ -77,8 +77,9 @@ fun FamilyOnboardingScreen(
     val scroll = remember(showProfile) { ScrollState(0) }
 
     val choosePhoto = rememberOnboardingPhotoPicker { result ->
-        photoPending = false
+        photoPending = result == OnboardingPhotoResult.Loading
         when (result) {
+            OnboardingPhotoResult.Loading -> Unit
             is OnboardingPhotoResult.Selected -> {
                 val image = decodeOnboardingPhoto(result.bytes)
                 if (image != null) {

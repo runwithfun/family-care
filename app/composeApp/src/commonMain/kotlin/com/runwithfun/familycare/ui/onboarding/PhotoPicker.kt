@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 internal const val MaxOnboardingPhotoBytes = 8 * 1024 * 1024
 
 internal sealed interface OnboardingPhotoResult {
+    data object Loading : OnboardingPhotoResult
     data class Selected(val bytes: ByteArray) : OnboardingPhotoResult
     data object Cancelled : OnboardingPhotoResult
     data object Failed : OnboardingPhotoResult
