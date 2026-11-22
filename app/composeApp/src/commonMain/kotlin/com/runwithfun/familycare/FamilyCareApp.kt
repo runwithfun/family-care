@@ -54,6 +54,7 @@ import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
 import com.runwithfun.familycare.growing.rememberGrowingNotes
 import com.runwithfun.familycare.records.RecordsScreen
+import com.runwithfun.familycare.records.rememberImportedRecords
 import com.runwithfun.familycare.records.rememberRecordsController
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.care_intro
@@ -123,12 +124,13 @@ fun FamilyCareApp() {
 @Composable
 private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileState) {
     val photo = rememberFamilyProfilePhoto(profile.photoBytes)
-    val plan = remember(profile.childName, profile.birthDate) {
-        DemoFamily.createPlan(profile.childName, profile.birthDate)
+    val importedRecords = rememberImportedRecords()
+    val plan = remember(profile.childName, profile.birthDate, importedRecords) {
+        DemoFamily.createPlan(profile.childName, profile.birthDate).also(importedRecords::restoreInto)
     }
     val growingNotes = rememberGrowingNotes(plan)
     val session = rememberCareSession(plan)
-    val records = rememberRecordsController(plan, saveTask = session::saveTask)
+    val records = rememberRecordsController(plan, saveTask = session::saveTask, importedRecords = importedRecords)
     val assistant = rememberAssistantActions(session)
     val conversation = rememberAssistantConversation(session, records)
     val people = remember(plan) { plan.people.associateBy { it.id } }
@@ -301,6 +303,7 @@ private fun FamilyCareNavigation(profile: FamilyProfile, family: FamilyProfileSt
                         AppTab.ASSISTANT -> LocalAssistantScreen(
                             actions = assistant,
                             conversation = conversation,
+                            records = records,
                             onSaved = {
                                 session.notifyChanged()
                                 day = assistant.task.date

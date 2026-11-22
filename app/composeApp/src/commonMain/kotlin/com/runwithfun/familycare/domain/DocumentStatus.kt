@@ -36,15 +36,15 @@ fun CareDocument.providerFollowUpMessage(): String? {
 
 fun CareDocument.originalText(): String? = when (val content = original.content) {
     is OriginalContent.Text -> content.value
-    is OriginalContent.StoredFile -> null
+    is OriginalContent.StoredFile, is OriginalContent.ImportedPdf -> null
 }
 
 fun CareDocument.storageKey(): String? = when (val content = original.content) {
     is OriginalContent.StoredFile -> content.storageKey
-    is OriginalContent.Text -> null
+    is OriginalContent.Text, is OriginalContent.ImportedPdf -> null
 }
 
 fun CareDocument.originalRetrievalLabel(): String = when (val content = original.content) {
-    is OriginalContent.Text -> original.fileName
+    is OriginalContent.Text, is OriginalContent.ImportedPdf -> original.fileName
     is OriginalContent.StoredFile -> content.storageKey
 }

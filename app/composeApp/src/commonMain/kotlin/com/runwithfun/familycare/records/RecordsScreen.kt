@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -23,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
@@ -33,6 +37,7 @@ import com.runwithfun.familycare.domain.CareDocument
 import com.runwithfun.familycare.domain.DocumentKind
 import com.runwithfun.familycare.domain.FamilyMember
 import com.runwithfun.familycare.domain.FamilyRole
+import com.runwithfun.familycare.domain.OriginalContent
 import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.TaskStatus
 import com.runwithfun.familycare.domain.Visit
@@ -98,14 +103,31 @@ fun RecordsScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun RecordsOverview(
     records: RecordsController,
     people: Map<String, FamilyMember>,
     onOpenDocument: (String) -> Unit,
 ) {
+    var ownerId by rememberSaveable { mutableStateOf(DemoFamily.childId) }
+    val addPdf = rememberRecordImportAction(records) { _, documentId -> onOpenDocument(documentId) }
+    SectionTitle("Add a clinic PDF")
+    Text("Choose who the record belongs to.", style = MaterialTheme.typography.bodyMedium)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        people.values.forEach { person ->
+            FilterChip(
+                selected = person.id == ownerId,
+                onClick = { ownerId = person.id },
+                label = { Text(person.displayName) },
+            )
+        }
+    }
+    Button(onClick = { addPdf(ownerId) }, enabled = ownerId in people) {
+        Text("Choose PDF")
+    }
     if (!records.isPdfImported()) {
-        Button(onClick = { records.importSyntheticImmunizationPdf() }) {
+        OutlinedButton(onClick = { records.importSyntheticImmunizationPdf() }) {
             Text("Import synthetic clinic PDF")
         }
     } else {
@@ -233,13 +255,18 @@ private fun DocumentDetail(
         "${person.displayName} · ${current.original.fileName}",
         style = MaterialTheme.typography.bodyMedium,
     )
+    if (current.original.content is OriginalContent.ImportedPdf) {
+        Text("Original PDF · review the document for details", style = MaterialTheme.typography.bodyMedium)
+    } else if (current.kind == DocumentKind.IMMUNIZATION_RECORD && current.hasGaps()) {
+        Text("Some immunization details still need review.", style = MaterialTheme.typography.bodyMedium)
+    }
 
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         val stack = maxWidth < NarrowWidth
         if (stack) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OriginalPanel(records, current)
-                ExtractedPanel(records, current)
+                if (current.fields.isNotEmpty()) ExtractedPanel(records, current)
             }
         } else {
             Row(
@@ -247,7 +274,7 @@ private fun DocumentDetail(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 OriginalPanel(records, current, modifier = Modifier.weight(1f))
-                ExtractedPanel(records, current, modifier = Modifier.weight(1f))
+                if (current.fields.isNotEmpty()) ExtractedPanel(records, current, modifier = Modifier.weight(1f))
             }
         }
     }

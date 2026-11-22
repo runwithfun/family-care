@@ -71,7 +71,27 @@ class CarePlan(
     }
 
     fun setDocumentOriginal(documentId: String, original: DocumentOriginal) {
-        updateDocument(documentId) { it.copy(original = original) }
+        updateDocument(documentId) {
+            require(it.original.content !is OriginalContent.ImportedPdf) { "Imported originals are immutable." }
+            it.copy(original = original)
+        }
+    }
+
+    internal fun registerImportedDocument(document: CareDocument) {
+        require(document.id.isNotBlank() && document.personId in peopleById) { "Invalid imported document owner or ID." }
+        require(document.original.content is OriginalContent.ImportedPdf) { "An imported original must have a content hash." }
+        while (true) {
+            val current = documentsById.load()
+            val previous = current[document.id]
+            if (previous != null) {
+                require(previous.personId == document.personId && previous.original == document.original) {
+                    "A different original already uses document ID ${document.id}."
+                }
+                return
+            }
+            val registered = document.copy(fields = document.fields.toList())
+            if (documentsById.compareAndSet(current, current + (document.id to registered))) return
+        }
     }
 
     fun eventsOn(date: CareDate, personId: String? = null): List<CareEvent> =

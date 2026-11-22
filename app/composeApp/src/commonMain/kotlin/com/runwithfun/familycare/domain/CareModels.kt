@@ -65,6 +65,7 @@ data class DocumentOriginal(
 sealed interface OriginalContent {
     data class StoredFile(val storageKey: String) : OriginalContent
     data class Text(val value: String) : OriginalContent
+    data class ImportedPdf(val sha256: String) : OriginalContent
 }
 
 data class DocumentField(
