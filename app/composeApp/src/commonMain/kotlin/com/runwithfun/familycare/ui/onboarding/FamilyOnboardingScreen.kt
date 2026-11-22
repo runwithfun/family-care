@@ -1,7 +1,5 @@
 package com.runwithfun.familycare.ui.onboarding
 
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -18,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -40,12 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -54,13 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import com.runwithfun.familycare.ui.home.ProfileAvatar
 
-private val Paper = Color(0xFFFFFDFC)
-private val Pink = Color(0xFFF3D6DE)
 private val PinkWash = Color(0xFFFBEEF2)
-private val Graphite = Color(0xFF242020)
-private val SecondaryInk = Color(0xFF675C60)
-private val Rose = Color(0xFF8A455C)
 
 @Composable
 fun FamilyOnboardingScreen(
@@ -68,6 +57,7 @@ fun FamilyOnboardingScreen(
     saveFailed: Boolean = false,
     onComplete: (String, ByteArray?) -> Unit,
 ) {
+    val colors = MaterialTheme.colorScheme
     var showProfile by rememberSaveable { mutableStateOf(false) }
     var name by rememberSaveable { mutableStateOf("Maya") }
     var photo by remember { mutableStateOf<ByteArray?>(null) }
@@ -77,8 +67,9 @@ fun FamilyOnboardingScreen(
     val scroll = remember(showProfile) { ScrollState(0) }
 
     val choosePhoto = rememberOnboardingPhotoPicker { result ->
-        photoPending = false
+        photoPending = result == OnboardingPhotoResult.Loading
         when (result) {
+            OnboardingPhotoResult.Loading -> Unit
             is OnboardingPhotoResult.Selected -> {
                 val image = decodeOnboardingPhoto(result.bytes)
                 if (image != null) {
@@ -100,7 +91,7 @@ fun FamilyOnboardingScreen(
         }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = Paper, contentColor = Graphite) {
+    Surface(modifier = Modifier.fillMaxSize(), color = colors.surface, contentColor = colors.onSurface) {
         Box(modifier = Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
             Column(
                 modifier = Modifier.align(Alignment.TopCenter).widthIn(max = 520.dp)
@@ -117,13 +108,13 @@ fun FamilyOnboardingScreen(
                                 focus.clearFocus()
                                 showProfile = false
                             },
-                            colors = ButtonDefaults.textButtonColors(contentColor = Graphite),
+                            colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurface),
                         ) {
                             Text("Back")
                         }
                         Text(
                             "Create a child profile",
-                            color = Graphite,
+                            color = colors.onSurface,
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -141,7 +132,7 @@ fun FamilyOnboardingScreen(
                                             choosePhoto()
                                         },
                                         enabled = !photoPending,
-                                        colors = ButtonDefaults.textButtonColors(contentColor = Rose),
+                                        colors = ButtonDefaults.textButtonColors(contentColor = colors.secondary),
                                         modifier = Modifier.heightIn(min = 44.dp),
                                     ) {
                                         Text(if (photo == null) "Add photo" else "Change photo")
@@ -154,7 +145,7 @@ fun FamilyOnboardingScreen(
                                                 photoFailed = false
                                             },
                                             enabled = !photoPending,
-                                            colors = ButtonDefaults.textButtonColors(contentColor = SecondaryInk),
+                                            colors = ButtonDefaults.textButtonColors(contentColor = colors.onSurfaceVariant),
                                             modifier = Modifier.heightIn(min = 44.dp),
                                         ) {
                                             Text("Remove photo")
@@ -163,7 +154,7 @@ fun FamilyOnboardingScreen(
                                         Text(
                                             "Optional",
                                             modifier = Modifier.padding(start = 12.dp),
-                                            color = SecondaryInk,
+                                            color = colors.onSurfaceVariant,
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -174,14 +165,14 @@ fun FamilyOnboardingScreen(
                             Text(
                                 "Preparing photo…",
                                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                                color = SecondaryInk,
+                                color = colors.onSurfaceVariant,
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
                         if (photoFailed) {
                             Text(
                                 "Couldn't open that photo. Choose another or continue.",
-                                color = Rose,
+                                color = colors.error,
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -197,24 +188,24 @@ fun FamilyOnboardingScreen(
                             ),
                             keyboardActions = KeyboardActions(onDone = { complete() }),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Graphite,
-                                unfocusedTextColor = Graphite,
-                                focusedBorderColor = Rose,
-                                focusedLabelColor = Rose,
-                                cursorColor = Rose,
+                                focusedTextColor = colors.onSurface,
+                                unfocusedTextColor = colors.onSurface,
+                                focusedBorderColor = colors.secondary,
+                                focusedLabelColor = colors.secondary,
+                                cursorColor = colors.secondary,
                             ),
                         )
                         if (saveFailed) {
                             Text(
                                 "Couldn't save the profile. Try again.",
-                                color = Rose,
+                                color = colors.error,
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
                     } else {
                         Text(
                             "Family Care",
-                            color = Rose,
+                            color = colors.secondary,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                         )
@@ -231,13 +222,13 @@ fun FamilyOnboardingScreen(
                         }
                         Text(
                             "Care for both of you",
-                            color = Graphite,
+                            color = colors.onSurface,
                             style = MaterialTheme.typography.headlineLarge,
                             fontWeight = FontWeight.SemiBold,
                         )
                         Text(
                             "Keep appointments, records, and follow-ups in one family plan.",
-                            color = SecondaryInk,
+                            color = colors.onSurfaceVariant,
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     }
@@ -248,10 +239,10 @@ fun FamilyOnboardingScreen(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp).heightIn(min = 54.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Pink,
-                        contentColor = Graphite,
-                        disabledContainerColor = Color(0xFFF3E8EB),
-                        disabledContentColor = SecondaryInk,
+                        containerColor = colors.primaryContainer,
+                        contentColor = colors.onPrimaryContainer,
+                        disabledContainerColor = colors.surfaceVariant,
+                        disabledContentColor = colors.onSurfaceVariant,
                     ),
                 ) {
                     Text(
@@ -268,27 +259,3 @@ fun FamilyOnboardingScreen(
 @Composable
 fun rememberFamilyProfilePhoto(bytes: ByteArray?): ImageBitmap? =
     remember(bytes) { bytes?.let(::decodeOnboardingPhoto) }
-
-@Composable
-private fun ProfileAvatar(image: ImageBitmap?, modifier: Modifier) {
-    Box(modifier = modifier.clip(CircleShape).background(Pink)) {
-        if (image != null) {
-            Image(
-                bitmap = image,
-                contentDescription = "Selected child photo",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-        } else {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawCircle(Rose, radius = size.minDimension * .15f, center = Offset(center.x, size.height * .36f))
-                drawRoundRect(
-                    color = Rose,
-                    topLeft = Offset(size.width * .23f, size.height * .56f),
-                    size = Size(size.width * .54f, size.height * .28f),
-                    cornerRadius = CornerRadius(size.minDimension * .15f),
-                )
-            }
-        }
-    }
-}

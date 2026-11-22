@@ -1,11 +1,15 @@
 package com.runwithfun.familycare.ui.assistant
 
 import com.runwithfun.familycare.demo.DemoFamily
+import com.runwithfun.familycare.domain.CareDate
 import com.runwithfun.familycare.domain.CarePlan
+import com.runwithfun.familycare.domain.Visit
+import com.runwithfun.familycare.domain.VisitStatus
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -54,6 +58,25 @@ class AssistantActionsTest {
         assertFalse(actions.confirmed)
         assertFalse(actions.confirm())
         assertTrue(plan.eventsOn(task.date).isEmpty())
+        assertEquals(0, storage.writes)
+    }
+
+    @Test
+    fun declinesConfirmationAfterTheLinkedVisitIsMovedOrFinished() {
+        val plan = DemoFamily.createPlan()
+        val storage = MemoryStorage()
+        val actions = AssistantActions(plan, storage)
+        val task = DemoFamily.recoveryQuestion.task
+        val visit = assertIs<Visit>(plan.event(assertNotNull(task.visitId)))
+
+        plan.updateEvent(visit.copy(date = CareDate(2026, 11, 24)))
+        assertTrue(actions.visitHasChanged)
+        assertFalse(actions.confirm())
+
+        plan.updateEvent(visit.copy(status = VisitStatus.COMPLETED))
+        assertTrue(actions.visitHasChanged)
+        assertFalse(actions.confirm())
+        assertNull(plan.event(task.id))
         assertEquals(0, storage.writes)
     }
 

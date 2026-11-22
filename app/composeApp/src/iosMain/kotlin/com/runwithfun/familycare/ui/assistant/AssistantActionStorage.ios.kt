@@ -16,6 +16,7 @@ internal actual fun rememberAssistantActionStorage(): AssistantActionStorage = r
             } else {
                 defaults.setObject(actionId, forKey = ConfirmedActionKey)
             }
+            check(defaults.synchronize()) { "Could not persist the Assistant action on this device" }
         }
     }
 }

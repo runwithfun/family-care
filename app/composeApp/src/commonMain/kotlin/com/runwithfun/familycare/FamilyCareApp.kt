@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,28 +34,39 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.runwithfun.familycare.demo.DemoFamily
-import com.runwithfun.familycare.domain.CareEvent
-import com.runwithfun.familycare.domain.CarePlan
-import com.runwithfun.familycare.domain.FamilyRole
+import com.runwithfun.familycare.domain.AgeStage
+import com.runwithfun.familycare.domain.CareDate
+import com.runwithfun.familycare.domain.Task
 import com.runwithfun.familycare.domain.Visit
+import com.runwithfun.familycare.growing.rememberGrowingNotes
+import com.runwithfun.familycare.records.RecordsScreen
+import com.runwithfun.familycare.records.rememberRecordsController
 import com.runwithfun.familycare.resources.Res
 import com.runwithfun.familycare.resources.care_intro
+import com.runwithfun.familycare.session.rememberCareSession
 import com.runwithfun.familycare.ui.FamilyCareTheme
+import com.runwithfun.familycare.ui.ActivityPrintScreen
+import com.runwithfun.familycare.ui.CalendarScreen
+import com.runwithfun.familycare.ui.GrowingUpScreen
+import com.runwithfun.familycare.ui.TaskDetailScreen
+import com.runwithfun.familycare.ui.VisitDetailScreen
 import com.runwithfun.familycare.ui.assistant.LocalAssistantScreen
 import com.runwithfun.familycare.ui.assistant.rememberAssistantActions
 import com.runwithfun.familycare.ui.home.HomeScreen
 import com.runwithfun.familycare.ui.home.ProfileAvatar
 import com.runwithfun.familycare.ui.home.childAge
-import com.runwithfun.familycare.ui.home.monthAndDay
-import com.runwithfun.familycare.ui.home.statusLabel
 import com.runwithfun.familycare.ui.onboarding.FamilyOnboardingScreen
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfilePhoto
 import com.runwithfun.familycare.ui.onboarding.rememberFamilyProfileState
@@ -72,7 +82,8 @@ private enum class AppTab(val label: String) {
 private sealed interface HomeDetail {
     data object Profile : HomeDetail
     data object Calendar : HomeDetail
-    data class Event(val event: CareEvent, val fromCalendar: Boolean = false) : HomeDetail
+    data class VisitEditor(val visitId: String, val fromCalendar: Boolean) : HomeDetail
+    data class TaskEditor(val taskId: String?, val date: CareDate, val fromCalendar: Boolean) : HomeDetail
 }
 
 @Composable
@@ -103,17 +114,28 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
     val photo = rememberFamilyProfilePhoto(photoBytes)
     val plan = remember(childName) { DemoFamily.createPlan(childName) }
     val assistant = rememberAssistantActions(plan)
+    val growingNotes = rememberGrowingNotes(plan)
+    val session = rememberCareSession(plan)
+    val records = rememberRecordsController(plan, saveTask = session::saveTask)
     val people = remember(plan) { plan.people.associateBy { it.id } }
     val child = people.getValue(DemoFamily.childId)
-    var tab by remember { mutableStateOf(AppTab.HOME) }
+    var tabName by rememberSaveable { mutableStateOf(AppTab.HOME.name) }
+    val tab = AppTab.valueOf(tabName)
+    var recordId by rememberSaveable { mutableStateOf<String?>(null) }
+    var activityStageName by rememberSaveable { mutableStateOf<String?>(null) }
+    val growingState = rememberSaveableStateHolder()
     var detail by remember { mutableStateOf<HomeDetail?>(null) }
     var day by remember { mutableStateOf(DemoFamily.today) }
     PlatformBackHandler(enabled = detail != null || tab != AppTab.HOME) {
-        val eventPage = detail as? HomeDetail.Event
-        when {
-            eventPage?.fromCalendar == true -> detail = HomeDetail.Calendar
-            detail != null -> detail = null
-            else -> tab = AppTab.HOME
+        when (val page = detail) {
+            is HomeDetail.VisitEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            is HomeDetail.TaskEditor -> detail = if (page.fromCalendar) HomeDetail.Calendar else null
+            HomeDetail.Calendar, HomeDetail.Profile -> detail = null
+            null -> when {
+                activityStageName != null -> activityStageName = null
+                tab == AppTab.RECORDS && recordId != null -> recordId = null
+                else -> tabName = AppTab.HOME.name
+            }
         }
     }
 
@@ -122,24 +144,52 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 when (val page = detail) {
                     HomeDetail.Profile -> Page("Profile", onBack = { detail = null }) {
-                        ProfileAvatar(photo = photo)
-                        Text(child.displayName, style = MaterialTheme.typography.displaySmall)
-                        child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
-                    }
-                    HomeDetail.Calendar -> Page("Calendar", onBack = { detail = null }) {
-                        Text(day.monthAndDay(), style = MaterialTheme.typography.titleMedium)
-                        val events = plan.eventsOn(day)
-                        if (events.isEmpty()) Text("No events saved for this day.")
-                        for (event in events) {
-                            TextButton(onClick = { detail = HomeDetail.Event(event, fromCalendar = true) }) {
-                                Text(event.title)
+                        val colors = MaterialTheme.colorScheme
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = colors.surfaceVariant,
+                            shape = RoundedCornerShape(28.dp),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                ProfileAvatar(photo = photo, modifier = Modifier.size(112.dp))
+                                Text(
+                                    child.displayName,
+                                    style = MaterialTheme.typography.headlineLarge,
+                                    textAlign = TextAlign.Center,
+                                )
+                                val age = child.birthDate?.let { childAge(it, DemoFamily.today) }
+                                if (age != null) Text(age, color = colors.onSurfaceVariant)
                             }
                         }
                     }
-                    is HomeDetail.Event -> EventPage(
-                        event = page.event,
-                        plan = plan,
+                    HomeDetail.Calendar -> CalendarScreen(
+                        session = session,
+                        selected = day,
+                        onSelectDate = { day = it },
+                        onOpenVisit = { detail = HomeDetail.VisitEditor(it, fromCalendar = true) },
+                        onOpenTask = { detail = HomeDetail.TaskEditor(it, day, fromCalendar = true) },
+                        onAddPlanItem = { detail = HomeDetail.TaskEditor(null, it, fromCalendar = true) },
+                        onBackHome = { detail = null },
+                    )
+                    is HomeDetail.VisitEditor -> VisitDetailScreen(
+                        session = session,
+                        visitId = page.visitId,
                         onBack = { detail = if (page.fromCalendar) HomeDetail.Calendar else null },
+                        onSaved = { day = it },
+                    )
+                    is HomeDetail.TaskEditor -> TaskDetailScreen(
+                        session = session,
+                        taskId = page.taskId,
+                        draftDate = page.date,
+                        onBack = { detail = if (page.fromCalendar) HomeDetail.Calendar else null },
+                        onSaved = { taskId, date ->
+                            day = date
+                            detail = HomeDetail.TaskEditor(taskId, date, page.fromCalendar)
+                        },
                     )
                     null -> when (tab) {
                         AppTab.HOME -> HomeScreen(
@@ -149,52 +199,64 @@ private fun FamilyCareNavigation(childName: String, photoBytes: ByteArray?) {
                             today = DemoFamily.today,
                             selectedDay = day,
                             people = people,
-                            eventsOn = { plan.eventsOn(it) },
+                            eventsOn = { session.eventsOn(it) },
                             onSelectDay = { day = it },
                             onOpenProfile = { detail = HomeDetail.Profile },
                             onOpenCalendar = { detail = HomeDetail.Calendar },
-                            onOpenEvent = { detail = HomeDetail.Event(it) },
+                            onOpenEvent = { event ->
+                                detail = when (event) {
+                                    is Visit -> HomeDetail.VisitEditor(event.id, fromCalendar = false)
+                                    is Task -> HomeDetail.TaskEditor(event.id, event.date, fromCalendar = false)
+                                }
+                            },
                         )
-                        AppTab.RECORDS -> Page("Records") {
-                            for (document in plan.documents) {
-                                Text(document.original.fileName, style = MaterialTheme.typography.titleMedium)
+                        AppTab.RECORDS -> RecordsScreen(
+                            records = records,
+                            people = people,
+                            selectedDocumentId = recordId,
+                            onSelectDocument = { recordId = it },
+                            onOpenTask = { detail = HomeDetail.TaskEditor(it.id, it.date, fromCalendar = false) },
+                        )
+                        AppTab.GROWING_UP -> {
+                            val printableStage = activityStageName?.let(AgeStage::valueOf)
+                            if (printableStage == null) {
+                                growingState.SaveableStateProvider("growing-up") {
+                                    GrowingUpScreen(
+                                        plan = plan,
+                                        child = child,
+                                        notes = growingNotes,
+                                        onOpenActivity = { activityStageName = it.name },
+                                        onSaved = session::notifyChanged,
+                                    )
+                                }
+                            } else {
+                                ActivityPrintScreen(printableStage, child.displayName) { activityStageName = null }
                             }
                         }
-                        AppTab.GROWING_UP -> Page("Growing up") {
-                            Text(child.displayName, style = MaterialTheme.typography.titleMedium)
-                            child.birthDate?.let { childAge(it, DemoFamily.today) }?.let { Text(it) }
-                        }
-                        AppTab.ASSISTANT -> LocalAssistantScreen(assistant) {
-                            day = assistant.task.date
-                            tab = AppTab.HOME
-                        }
+                        AppTab.ASSISTANT -> LocalAssistantScreen(
+                            actions = assistant,
+                            onSaved = {
+                                session.notifyChanged()
+                                day = assistant.task.date
+                                tabName = AppTab.HOME.name
+                            },
+                            onOpenCalendar = {
+                                day = assistant.visitDate ?: DemoFamily.today
+                                tabName = AppTab.HOME.name
+                                detail = HomeDetail.Calendar
+                            },
+                        )
                     }
                 }
             }
             AppNavigation(
                 current = tab,
                 onSelect = {
-                    tab = it
+                    if (tab != it) activityStageName = null
+                    tabName = it.name
                     detail = null
                 },
             )
-        }
-    }
-}
-
-@Composable
-private fun EventPage(event: CareEvent, plan: CarePlan, onBack: () -> Unit) {
-    Page(event.title, onBack = onBack) {
-        val person = plan.people.first { it.id == event.personId }
-        Text(if (person.role == FamilyRole.MOTHER) "For you" else person.displayName)
-        Text(listOfNotNull(event.date.monthAndDay(), event.time?.toString()).joinToString(" · "))
-        event.statusLabel()?.let { Text(it) }
-        if (event is Visit) Text(event.provider)
-        val source = plan.documents.firstOrNull { it.id == event.sourceDocumentId }
-        if (source != null) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text("Source document", style = MaterialTheme.typography.labelLarge)
-            Text(source.original.fileName)
         }
     }
 }
@@ -216,7 +278,7 @@ private fun Page(
                 Text("Back")
             }
         }
-        Text(title, style = MaterialTheme.typography.headlineSmall)
+        Text(title, modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
         content()
     }
 }

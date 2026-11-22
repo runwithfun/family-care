@@ -1,6 +1,6 @@
 # Family Care
 
-Family Care is a mobile planner for family appointments, records, and follow-ups. The starter app opens a fictional child profile and day plan locally. The app is designed to run on the device with local records, reminders, and Assistant actions. It requires no backend deployment or analytics service. The project site is published at [https://runwithfun.github.io/family-care/](https://runwithfun.github.io/family-care/).
+Family Care is a mobile day plan for a mother's care and her child's appointments, records, and follow-ups. The hackathon demo uses a fictional family and sample clinic documents. The app runs on the device and requires no backend or analytics service. Visit the [project site](https://runwithfun.github.io/family-care/).
 
 ## Run the demo
 
@@ -27,6 +27,14 @@ cd app
 ```
 
 See [AGENTS.md](AGENTS.md) for coordination and verification rules.
+
+## Walk through the demo
+
+1. Complete the illustrated welcome with the example child name **Maya**. The profile photo is optional. Today opens on the fixed demo day, November 23, 2026.
+2. Open the **Well-baby visit** from Today. In **Calendar**, move it to another date and keep it **Booked**. Leave the **Recovery follow-up** on the demo day for the Assistant step.
+3. In **Records**, tap **Import synthetic clinic PDF**. Open the immunization record to retrieve the original PDF and review a field. The missing dose date can stay unresolved. Confirmed appointments and published schedule references are shown separately.
+4. In **Assistant**, tap **Open original note**, then **Add to Today** on the sample follow-up. The task appears under **For you**. Restart the app to see the same saved item.
+5. In **Growing up**, switch between the two age stages. Save a note for the next open visit, then open an activity and use **Export PDF** with A4 or US Letter.
 
 ## Shared demo model
 

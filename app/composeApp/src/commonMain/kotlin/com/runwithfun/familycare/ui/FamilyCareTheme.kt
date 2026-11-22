@@ -25,6 +25,8 @@ private val PaperColors = lightColorScheme(
     primaryContainer = SoftPink,
     onPrimaryContainer = Ink,
     secondary = Rose,
+    secondaryContainer = SoftPink,
+    onSecondaryContainer = Ink,
     background = Color.White,
     onBackground = Ink,
     surface = Color.White,
@@ -41,6 +43,8 @@ private val DarkPaperColors = darkColorScheme(
     primaryContainer = SoftPink,
     onPrimaryContainer = Ink,
     secondary = SoftPink,
+    secondaryContainer = SoftPink,
+    onSecondaryContainer = Ink,
     background = Color(0xFF221E20),
     onBackground = Color(0xFFFFF8FA),
     surface = Color(0xFF221E20),
@@ -61,6 +65,8 @@ internal fun FamilyCareTheme(content: @Composable () -> Unit) {
     val defaults = Typography()
     val type = defaults.copy(
         displaySmall = defaults.displaySmall.copy(fontFamily = display, fontWeight = FontWeight.Bold, fontSize = 40.sp),
+        headlineLarge = defaults.headlineLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold),
+        headlineMedium = defaults.headlineMedium.copy(fontFamily = display, fontWeight = FontWeight.Bold),
         headlineSmall = defaults.headlineSmall.copy(fontFamily = display, fontWeight = FontWeight.Bold),
         titleLarge = defaults.titleLarge.copy(fontFamily = display, fontWeight = FontWeight.Bold),
         titleMedium = defaults.titleMedium.copy(fontFamily = body, fontWeight = FontWeight.SemiBold),
