@@ -39,7 +39,9 @@ jobs:
 
           tools="$ANDROID_HOME/cmdline-tools/latest/bin"
           image='system-images;android-35;google_apis;x86_64'
-          "$tools/sdkmanager" --install emulator "$image"
+          "$tools/sdkmanager" --install platform-tools emulator "$image"
+          "$ANDROID_HOME/platform-tools/adb" version
+          echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           "$ANDROID_HOME/emulator/emulator" -accel-check
           printf 'no\n' | "$tools/avdmanager" create avd -n family-care -k "$image" --device pixel_7
           nohup "$ANDROID_HOME/emulator/emulator" -avd family-care -port 5554 \
