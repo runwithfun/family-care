@@ -26,7 +26,7 @@ cd app
 ./gradlew :composeApp:desktopTest :composeApp:assembleDebug --max-workers=1
 ```
 
-See [AGENTS.md](AGENTS.md) for coordination and verification rules. The Gradle wrapper is distributed under the [Apache License 2.0](app/gradle/wrapper/LICENSE).
+See [AGENTS.md](AGENTS.md) for coordination and verification rules.
 
 ## Shared demo model
 
@@ -35,3 +35,7 @@ See [AGENTS.md](AGENTS.md) for coordination and verification rules. The Gradle w
 - A visit has its own booking state, and a task has an independent completion state. Both can link back to an original document for the same person.
 - Documents keep original content, extracted proposals and reviewed values. Recorded immunizations, public references and appointments are separate.
 - A confirmed assistant proposal writes through the same event operation as the calendar. Repeating the same event ID and details returns the existing result. A different event under that ID is rejected.
+
+## License
+
+Family Care is available under the [MIT License](LICENSE). The Gradle wrapper is distributed under the [Apache License 2.0](app/gradle/wrapper/LICENSE). Bundled fonts retain the SIL Open Font License notices in the app resources.
